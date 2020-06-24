@@ -38,34 +38,48 @@ rule kmergenie_short:
         F = "reads/short/{short}.R1.fq.gz",
         R = "reads/short/{short}.R2.fq.gz"
     output:
-    #TODO figure out output
-        "kmergenie/something"
+        best_k = "kmergenie/short/{short}.best.k"
+    log:
+        k_report = "kmergenie/short/{short}_report.html"
     params:
-
+        kmin = "-l 20",
+        kmax = "-k 120",
+        out_prefix = "-o {short}"  
+    threads: 16
     message:
         """
         Finding optimal Kmers for short reads with Kmergenie
         """
     shell:
         """
-        kmergenie {input}
+        mkdir -p kmergenie/short/ && cd kmergenie/short
+        echo -e "{input.F}\n{input.R}" > shortreads.txt
+        ../../software/kmergenie-1.7051/kmergenie shortreads.txt -t {threads} {params} > {output.best.k} 
         """
 
 
 rule kmergenie_long:
     input:
-        "reads/long/{long}.fq.gz"
+        long_reads = "reads/long/{long}.fq.gz",
+        short_contigs = "sparseassembler/Contigs.txt"
     output:
-
+        best_k = "kmergenie/long/{long}.best.k"
+    log:
+        k_report = "kmergenie/long/{long}_report.html"
     params:
-
+        kmin = "-l 30",
+        kmax = "-k 150",
+        out_prefix = "-o {long}"
+    threads: 16  
     message:
         """
-        Finding optimal Kmers for long reads with Kmergenie
+        Finding optimal Kmers for long reads + sparseassembler contigs with Kmergenie
         """
     shell:
         """
-        kmergenie {input}
+        mkdir -p kmergenie/long/ && cd kmergenie/long
+        echo -e "{input.long_reads}\n{input.short_contigs}" > longreads.txt
+        ../../software/kmergenie-1.7051/kmergenie longreads.txt -t {threads} {params} > {output.best.k} 
         """
 
 
@@ -73,17 +87,15 @@ rule sparseassembler:
     input:
         in1 = "reads/short_trimmed/{short}.R1.fq.gz",
         in2 = "reads/short_trimmed/{short}.R2.fq.gz",
-        kmer = "{kmergenie_short.output}"
+        kmer = "kmergenie/short/{short}.best.k"
     output:
-        "sparseassembler/contigs.txt"
+        "sparseassembler/Contigs.txt"
     params:
-        in1 = "i1 ../{input.in1}",
-        in2 = "i2 ../{input.in2}",
-        genome_size = "GS 1780000000",
+        genome_size = "GS 2000000000",
         node_thresh = "NodeCovTh 2",
         edge_thresh = "EdgeCovTh 1",
         g_thresh = "g 15",
-        ld_val = "LD 0",
+        ld_val = "LD 0"
     message:
         """
         Assembling short reads with Kmergenie-derived K
@@ -92,15 +104,15 @@ rule sparseassembler:
         """
         mkdir sparseassembler && cd sparseassembler
         KMER=$(grep ../{kmer} somevalue)
-        SparseAssembler k $KMER {params}
+        SparseAssembler k $KMER i1 ../{input.in1} i2 ../{input.in2} {params}
         """
 
 
 rule dbg2olc:
     input:
-        sparse = "sparseassembler/contigs.txt",
-        longreads = "reads/long/{long}.fq.gz",
-        kmergenie = "{kmergenie_long.output}"
+        sparse = "sparseassembler/Contigs.txt",
+        longreads = "reads/long/{long}.fasta",
+        kmergenie = "kmergenie/long/{long}.best.k"
     output:
         "dbg2olc/backbone_raw.fasta"
     message:
@@ -110,14 +122,13 @@ rule dbg2olc:
     params:
         ld_val = "LD 0",
         adaptive_theta = "AdaptiveTh 0.001",
-        kmer_cov_thresh = "KmerCovTh 3",
+        #kmer_cov_thresh = "KmerCovTh 3",
         min_overlap = "MinOverlap 50",
-        rm_chimera = "RemoveChimera 1",
-        infile = "Contigs ../{input.sparse}",
-        longreads = "f ../{input.longreads}"
+        rm_chimera = "RemoveChimera 1"
     shell:
         """
         mkdir dbg2olc && cd dbg2olc
         KMER=$(grep ../{kmergenie} somevalue)
-        DBG2OLC k $KVAL {params}
+        KCOV=$(grep ../{kmergenie} somevalue)
+        DBG2OLC k $KMER KmerCovTh $KCOV Contigs ../{input.sparse} f ../{input.longreads} {params}
         """
