@@ -1,5 +1,5 @@
 rule all:
-    input: backbone_raw.fasta
+    input: "backbone_raw.fasta"
 
 
 rule trim_short:
