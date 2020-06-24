@@ -103,7 +103,7 @@ rule sparseassembler:
     shell:
         """
         mkdir sparseassembler && cd sparseassembler
-        KMER=$(grep ../{kmer} somevalue)
+        KMER=$(grep "^best k:" {kmer} | grep -o '[^ ]*$')
         SparseAssembler k $KMER i1 ../{input.in1} i2 ../{input.in2} {params}
         """
 
@@ -128,7 +128,7 @@ rule dbg2olc:
     shell:
         """
         mkdir dbg2olc && cd dbg2olc
-        KMER=$(grep ../{kmergenie} somevalue)
-        KCOV=$(grep ../{kmergenie} somevalue)
+        KMER=$(grep "^best k:" {kmer} | grep -o '[^ ]*$')
+        KCOV=$(grep "for best k:" {kmer} | grep -o '[^ ]*$')
         DBG2OLC k $KMER KmerCovTh $KCOV Contigs ../{input.sparse} f ../{input.longreads} {params}
         """
