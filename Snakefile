@@ -1,5 +1,5 @@
 rule all:
-    input:
+    input: backbone_raw.fasta
 
 
 rule trim_short:
@@ -26,7 +26,7 @@ rule trim_short:
         length_req = "--length_required 50",   #TODO FIGURE THIS VALUE OUT
         q = "-q 15",
         u = "-u 50",
-        correction = "--correction",
+        correction = "--correction"
     shell:
         """
         fastp --thread {threads} --in1 {input.F} --in2 {input.R} --out1 {output.F} --out2 {output.R} -h {log.html} -j {log.json} {params} &> {log.txt}
@@ -68,7 +68,7 @@ rule kmergenie_long:
         k_report = "kmergenie/long/{long}_report.html"
     params:
         kmin = "-l 30",
-        kmax = "-k 150",
+        kmax = "-k 200",
         out_prefix = "-o {long}"
     threads: 16  
     message:
@@ -82,11 +82,26 @@ rule kmergenie_long:
         ../../software/kmergenie-1.7051/kmergenie longreads.txt -t {threads} {params} > {output.best.k} 
         """
 
+rule decompress:
+    input:
+        in1 = "reads/short_trimmed/{short}.R1.fq.gz",
+        in2 = "reads/short_trimmed/{short}.R2.fq.gz"
+    output:
+        in1 = "reads/short_trimmed/{short}.R1.fq.",
+        in2 = "reads/short_trimmed/{short}.R2.fq"
+    message:
+        """
+        Decompressing short reads for SparseAssembler
+        """
+    shell:
+        """
+        gunzip {input}
+        """
 
 rule sparseassembler:
     input:
-        in1 = "reads/short_trimmed/{short}.R1.fq.gz",
-        in2 = "reads/short_trimmed/{short}.R2.fq.gz",
+        in1 = "reads/short_trimmed/{short}.R1.fq",
+        in2 = "reads/short_trimmed/{short}.R2.fq",
         kmer = "kmergenie/short/{short}.best.k"
     output:
         "sparseassembler/Contigs.txt"
