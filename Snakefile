@@ -35,8 +35,8 @@ rule trim_short:
 
 rule kmergenie_short:
     input:
-        F = "reads/short/{short}.illumina.R1.fq.gz",
-        R = "reads/short/{short}.illumina.R2.fq.gz"
+        F = "reads/short_trimmed/{short}.illumina.R1.fq.gz",
+        R = "reads/short_trimmed/{short}.illumina.R2.fq.gz"
     output:
         best_k = "kmergenie/short/{short}.best.k"
     log:
