@@ -1,14 +1,14 @@
 rule all:
-    input: "backbone_raw.fasta"
+    input: "dbg2olc/YFT_backbone_raw.fasta"
 
 
 rule trim_short:
     input:
-        F = "reads/short/{short}.F.fq.gz",
-        R = "reads/short/{short}.R.fq.gz"
+        F = "reads/short/{short}.illumina.F.fq.gz",
+        R = "reads/short/{short}.illumina.R.fq.gz"
     output:
-        F = "reads/short_trimmed/{short}.R1.fq.gz",
-        R = "reads/short_trimmed/{short}.R2.fq.gz"
+        F = "reads/short_trimmed/{short}.illumina.R1.fq.gz",
+        R = "reads/short_trimmed/{short}.illumina.R2.fq.gz"
     log:
         json = "reads/short_trimmed/{short}.json",
         html = "reads/short_trimmed/{short}.html",
@@ -23,7 +23,7 @@ rule trim_short:
         cut_window = "--cut_window_size 5",
         cut_qual = "--cut_mean_quality 15",
         adapters = "--detect_adapter_for_pe",
-        length_req = "--length_required 50",   #TODO FIGURE THIS VALUE OUT
+        length_req = "--length_required 50",
         q = "-q 15",
         u = "-u 50",
         correction = "--correction"
@@ -35,8 +35,8 @@ rule trim_short:
 
 rule kmergenie_short:
     input:
-        F = "reads/short/{short}.R1.fq.gz",
-        R = "reads/short/{short}.R2.fq.gz"
+        F = "reads/short/{short}.illumina.R1.fq.gz",
+        R = "reads/short/{short}.illumina.R2.fq.gz"
     output:
         best_k = "kmergenie/short/{short}.best.k"
     log:
@@ -60,8 +60,8 @@ rule kmergenie_short:
 
 rule kmergenie_long:
     input:
-        long_reads = "reads/long/{long}.fq.gz",
-        short_contigs = "sparseassembler/Contigs.txt"
+        long_reads = "reads/long/{long}.pb.fasta",
+        short_contigs = "sparseassembler/{long}_contigs.txt"
     output:
         best_k = "kmergenie/long/{long}.best.k"
     log:
@@ -84,11 +84,11 @@ rule kmergenie_long:
 
 rule decompress:
     input:
-        in1 = "reads/short_trimmed/{short}.R1.fq.gz",
-        in2 = "reads/short_trimmed/{short}.R2.fq.gz"
+        in1 = "reads/short_trimmed/{short}.illumina.R1.fq.gz",
+        in2 = "reads/short_trimmed/{short}.illumina.R2.fq.gz"
     output:
-        in1 = "reads/short_trimmed/{short}.R1.fq.",
-        in2 = "reads/short_trimmed/{short}.R2.fq"
+        in1 = "reads/short_trimmed/{short}.illumina.R1.fq.",
+        in2 = "reads/short_trimmed/{short}.illumina.R2.fq"
     message:
         """
         Decompressing short reads for SparseAssembler
@@ -100,11 +100,11 @@ rule decompress:
 
 rule sparseassembler:
     input:
-        in1 = "reads/short_trimmed/{short}.R1.fq",
-        in2 = "reads/short_trimmed/{short}.R2.fq",
+        in1 = "reads/short_trimmed/{short}.illumina.R1.fq",
+        in2 = "reads/short_trimmed/{short}.illumina.R2.fq",
         kmer = "kmergenie/short/{short}.best.k"
     output:
-        "sparseassembler/Contigs.txt"
+        contigs = "sparseassembler/{short}_contigs.txt"
     params:
         genome_size = "GS 2000000000",
         node_thresh = "NodeCovTh 2",
@@ -120,16 +120,17 @@ rule sparseassembler:
         mkdir sparseassembler && cd sparseassembler
         KMER=$(grep "^best k:" {kmer} | grep -o '[^ ]*$')
         SparseAssembler k $KMER i1 ../{input.in1} i2 ../{input.in2} {params}
+        mv Contigs.txt {short}_contigs.txt
         """
 
 
 rule dbg2olc:
     input:
-        sparse = "sparseassembler/Contigs.txt",
-        longreads = "reads/long/{long}.fasta",
-        kmergenie = "kmergenie/long/{long}.best.k"
+        sparse = "sparseassembler/{prefix}_contigs.txt",
+        longreads = "reads/long/{prefix}.pb.fasta",
+        kmergenie = "kmergenie/long/{prefix}.best.k"
     output:
-        "dbg2olc/backbone_raw.fasta"
+        contigs = "dbg2olc/{prefix}_backbone_raw.fasta"
     message:
         """
         Assembling long and short reads with DBG2OLC
@@ -146,4 +147,5 @@ rule dbg2olc:
         KMER=$(grep "^best k:" {kmer} | grep -o '[^ ]*$')
         KCOV=$(grep "for best k:" {kmer} | grep -o '[^ ]*$')
         DBG2OLC k $KMER KmerCovTh $KCOV Contigs ../{input.sparse} f ../{input.longreads} {params}
+        mv backbone_raw.fasta {prefix}_backbone_raw.fasta
         """
