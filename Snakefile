@@ -29,7 +29,7 @@ rule trim_short:
         correction = "--correction",
     shell:
         """
-        fastp --thread {threads} --in1 {input.F} --in2 {input.R} -h {log.html} -j {log.json} {params} &> {log.txt}
+        fastp --thread {threads} --in1 {input.F} --in2 {input.R} --out1 {output.F} --out2 {output.R} -h {log.html} -j {log.json} {params} &> {log.txt}
         """
 
 
