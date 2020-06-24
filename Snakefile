@@ -87,7 +87,7 @@ rule decompress:
         in1 = "reads/short_trimmed/{short}.illumina.R1.fq.gz",
         in2 = "reads/short_trimmed/{short}.illumina.R2.fq.gz"
     output:
-        in1 = "reads/short_trimmed/{short}.illumina.R1.fq.",
+        in1 = "reads/short_trimmed/{short}.illumina.R1.fq",
         in2 = "reads/short_trimmed/{short}.illumina.R2.fq"
     message:
         """
