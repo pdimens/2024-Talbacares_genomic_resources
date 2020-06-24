@@ -1,0 +1,320 @@
+#!/usr/bin/env python2
+
+default_max_k = 121
+default_min_k = 15
+default_step = 10
+default_prefix = 'histograms'
+# in default mode (ntcard), it's fine, those are actually the default variable for kmergenie
+# in --orig-hist mode, you cannot change these default values, they are fixed in another program (main.cpp), these variables here are only used to print kmergenie usage
+
+doc = """KmerGenie 1.7051
+
+Usage:
+    kmergenie <read_file> [options]
+
+Options:
+    --diploid    use the diploid model (default: haploid model)
+    --one-pass   skip the second pass to estimate k at 2 bp resolution (default: two passes)
+    -k <value>   largest k-mer size to consider (default: %d)
+    -l <value>   smallest k-mer size to consider (default: %d)
+    -s <value>   interval between consecutive kmer sizes (default: %d)
+    -e <value>   k-mer sampling value (default: auto-detected to use ~200 MB memory/thread)
+    -t <value>   number of threads (default: number of cores minus one)
+    -o <prefix>  prefix of the output files (default: %s)
+    --debug      developer output of R scripts
+    --orig-hist  legacy histogram estimation method (slower, less accurate)
+
+""" % (default_max_k, default_min_k, default_step, default_prefix)
+
+import pkg_resources
+import sys, os 
+
+EGG_PATH=""
+try:
+    EGG_PATH = pkg_resources.resource_filename('kmergenie', './')
+    sys.path.append(EGG_PATH)
+except:
+    pass
+try:
+    # this one appears to be needed for conda build, it seems more robust also
+    EGG_PATH = os.path.dirname(pkg_resources.resource_filename('kmergenie.third_party', ''))
+    sys.path.append(EGG_PATH)
+except:
+    pass
+
+from third_party.docopt import docopt
+from subprocess import call, PIPE
+from glob import glob
+from multiprocessing import cpu_count, Pool
+from multiprocessing.managers import SyncManager
+
+from math import floor
+import time
+import signal
+
+if sys.version_info[0] == 2 and sys.version_info[1] < 5:
+    sys.exit("Python >= 2.5 is required")
+
+if sys.version_info[0] == 2:
+    #unbuffered print, solves badly ordered stdout on clusters
+    #I don't yet know how to make this python3-compatible, so it's active for python2 only
+    sys.stdout = os.fdopen(sys.stdout.fileno(), 'wb', 0)
+
+arguments = docopt(doc)
+
+read_file = arguments['<read_file>']
+is_diploid = arguments['--diploid']
+one_pass = arguments['--one-pass']
+sampling = arguments['-e']
+prefix = arguments['-o']
+nb_threads = arguments['-t']
+lowest_k = arguments['-l']
+largest_k = arguments['-k']
+step = arguments['-s']
+debug = arguments['--debug']
+use_specialk = arguments['--orig-hist']
+
+    
+lowest_k = int(lowest_k) if lowest_k else default_min_k
+largest_k = int(largest_k) if largest_k else default_max_k
+step = int(step) if step else default_step
+
+if not nb_threads:
+    nb_threads = max(1,(cpu_count() - 1))
+else:
+    nb_threads = int(nb_threads)
+
+if prefix is None:
+    prefix = default_prefix
+
+# make output dir if it doesn't exist (for galaxy for instance)
+dir_prefix = os.path.dirname(prefix)
+if len(dir_prefix) > 0 and not os.path.exists(dir_prefix):
+    os.makedirs(dir_prefix)
+
+def get_executable(name):
+    # regular install
+    DIR = os.path.dirname(os.path.realpath(__file__))
+    candidate = "%s/%s" % (DIR,name)
+    if os.path.isfile(candidate):
+        return candidate
+    # egg install (python setup.py install)
+    candidate = "%s/%s" % (EGG_PATH,name)
+    if os.path.isfile(candidate):
+        return candidate
+    else:
+        exit("Cannot find %s, in either %s %s\n Did you type `make` before installing kmergenie? If so, contact a developer (kmergenie@cse.psu.edu)" %(name,DIR,EGG_PATH))
+
+
+# remove existing histograms
+call(["rm","-f","%s.dat" % prefix])
+for f in glob('%s-k*.histo' % prefix):
+    call(["rm","-f",f])
+
+
+def specialk(arguments_passed_list):
+    rc = 0 
+    try:
+        # specialk is the software that computes approximate histograms
+        rc = call([get_executable('specialk'), read_file, "-o", prefix, "-t", str(nb_threads)] + arguments_passed_list)
+    except OSError as e:
+        print >>sys.stderr, "Execution of specialk failed:", e
+        exit()
+    if rc != 0:
+        exit("")
+
+""" begin ntCard block """
+
+def try_open(reads_file):
+    fp=None
+    try:
+        import gzip
+        fp = gzip.open(reads_file)
+        ln = fp.read(2) # read arbitrary bytes to check if gzipped 
+        fp.close() # if we're here, it's definitely gzip
+        fp = gzip.open(reads_file)
+    except Exception as e:
+        if fp: fp.close()
+        fp = open(reads_file)
+    return fp
+
+# auxiliary function
+def get_read_length(list_reads):
+    read_lengths = []
+    for reads_file in list_reads:
+        fp = try_open(reads_file)
+        # read the 1000 first reads
+        from readfq import readfq
+        read_count = 0
+        for name, seq, qual in readfq(fp):
+            read_count += 1
+            read_lengths += [len(seq)]
+            if read_count > 1000:
+                break
+        fp.close()
+
+    # so, on CEA cluster, loading numpy forced minia to run on a single thread. so let's not use numpy here. days of debugging to get that.
+    import math
+    def percentile(data, percentile):
+        size = len(data)
+        return sorted(data)[int(math.ceil((size * percentile) / 100)) - 1]
+
+    if len(read_lengths) == 0:
+        print("Warning: couldn't detect max read length. Are you sure the input is correct?")
+        exit("")
+
+    estimated_max_read_length = percentile(read_lengths,90)
+    print("Setting maximum kmer length to: " + str(estimated_max_read_length) + " bp") # based on the 90 percentile of 1000 first reads lengths of each input file
+    return estimated_max_read_length
+
+def is_list_of_reads(read_file):
+    with try_open(read_file) as f:
+        r = f.read(2)
+        if not isinstance(r,str):
+            r = str(r,'utf-8')
+        return r[0] not in ['>','@']
+
+def convert_to_list_of_reads(read_file):
+    lst = []
+    with try_open(read_file) as f:
+        for line in f:
+            lst += [line.strip()]
+    print("list of reads:\n" + '\n'.join(lst))
+    return lst
+
+"""
+ntcard supports multiple-k histogram estimation but last time i checked, it doesn't parallelize over the k values, so i'm keeping this scheme for now
+"""
+def ntcard_single_k(args):
+    k, nb_threads = args
+    try:
+        global modified_read_file
+        rc = 0
+        # ntCard is another software that computes approximate histograms, faster than specialk
+        ntcard_histo_name = "freq_k%d.hist" %k
+        histo_name =        prefix+"-k%d.histo" %k
+        rc = call([get_executable('ntCard' + os.path.sep + 'ntcard'), modified_read_file, "-c", str(10000), "-k", str(k), "-t", str(nb_threads), "-o", ntcard_histo_name], stderr=PIPE) #,stdout=f) # ntcard doesn't stdout the histogram anymore
+        # convert histogram
+        g = open(histo_name,"w")
+        with open(ntcard_histo_name) as f:
+            for line in f:
+                if line.startswith("k"):
+                    continue
+                file_k = line.split()[0]
+                assert(int(k) == int(file_k))
+                g.write(' '.join(line.split()[1:])+"\n")
+        g.close()
+        os.remove(ntcard_histo_name)
+
+        sys.stdout.write(str(k) + ' ')
+        sys.stdout.flush()
+    except KeyboardInterrupt:
+        pass
+
+def ntcard_wrapper(k_range):
+    global largest_k, modified_read_file
+    list_k_values = []
+    is_read_file_a_list = is_list_of_reads(read_file)
+    modified_read_file = ("@" if is_read_file_a_list else "") + read_file
+    read_file_list = convert_to_list_of_reads(read_file) if is_read_file_a_list else [read_file]
+    #print "debug (read file is a list: ",is_read_file_a_list,"read files list:",read_file_list
+    max_read_length = get_read_length(read_file_list)
+    if largest_k > max_read_length:
+        largest_k = max_read_length
+    largest_k = int(floor((largest_k-1)/10)*10+1)
+
+
+    if k_range is None:
+        k_range = range(largest_k,lowest_k-1,-step)
+    for k in k_range:
+        list_k_values += [k]
+    list_k_values=sorted(list_k_values)
+    sys.stdout.write("computing histograms (from k=%d to k=%d): " % (list_k_values[0], list_k_values[-1]))
+
+    # try to get the ntCard executable because it'll be too late in a thread, exception won't show
+    get_executable('ntCard' + os.path.sep + 'ntcard')
+
+    # there is two levels of parallelism:
+    # ntcard parallelizes on the number of files
+    # but if there is only one or a few files, i want to parallelize on the number of k values
+    nb_threads_inside_ntcard = int(max(1, len(read_file_list) / len(k_range) ))
+    nb_threads_wrapper_ntcard = int(max(1, nb_threads / nb_threads_inside_ntcard))
+
+    # the following is a way to handle ctrl+c
+    # adapted from http://jtushman.github.io/blog/2014/01/14/python-|-multiprocessing-and-interrupts/
+    def mgr_init():
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+    manager = SyncManager()
+    # explicitly starting the manager, and telling it to ignore the interrupt signal
+    manager.start(mgr_init)
+
+    start = time.time()
+    try:
+        p = Pool(nb_threads_wrapper_ntcard)
+        r = p.map_async(ntcard_single_k, zip(list_k_values,[nb_threads_inside_ntcard]*len(list_k_values)))
+        r.wait()
+    except OSError as e:
+        print >>sys.stderr, "Execution of ntCard failed:", e
+        exit()
+    except KeyboardInterrupt:
+        print("Ctrl+C detected, exiting")
+        exit()
+    finally:
+        manager.shutdown()
+
+    sys.stdout.write('\n')
+
+    end = time.time()
+    print("ntCard wall-clock time over all k values: %d seconds " %(end - start))
+
+
+""" end of ntCard block """
+
+def execute_once(arguments_passed_list, first_pass=False, k_interval=None):
+    print("running histogram estimation")
+    
+    if use_specialk:
+        specialk(arguments_passed_list)
+    else:
+        ntcard_wrapper(k_interval)
+
+    print("fitting model to histograms to estimate best k")
+    try:
+        args = [get_executable('scripts' + os.path.sep + 'decide'), prefix, "-t", str(nb_threads)]
+        if is_diploid:
+            args += ["--diploid"]
+        if first_pass:
+            args += ["--first_pass"]
+        if debug:
+            args += ["--debug"]
+        best_k = call(args) 
+        if best_k == 1: # most likely an error code
+            sys.exit("Execution of 'scripts/decide' failed (return code %d). If this is a fresh Kmergenie install, try running 'make check'." % best_k)
+    except OSError as e:
+        print >>sys.stderr, "Execution of decide failed:", e
+
+
+    return best_k
+
+arguments_passed_tuples = [ (key,  value) for key, value in arguments.items() if key.startswith("-") and not key.startswith("--") and value != None]
+arguments_passed_list = [ y for x in arguments_passed_tuples for y in x ]
+
+first_pass = not one_pass
+best_k = execute_once(arguments_passed_list, first_pass=first_pass)
+
+# another round for more precise estimation (suggested by Erwan)
+refine_around = 6
+refined_step = 2
+if best_k != 0 and (not one_pass):
+    min_k = max(lowest_k, best_k-refine_around)
+    max_k = min(largest_k, best_k+refine_around)
+    print("refining estimation around [%d; %d], with a step of %d" % (min_k, max_k, refined_step))
+    arguments_list = [read_file, "-k", str(max_k), "-l", str(min_k), "-s", str(refined_step)]
+    if is_diploid:
+        arguments_list += ["--diploid"]
+    if sampling != None:
+        arguments_list += ["-e", str(sampling)]
+    best_k = execute_once(arguments_list, first_pass=False, k_interval=range(max_k,min_k,-refined_step))
+
+if best_k == 0:
+    sys.exit("No best k found")
