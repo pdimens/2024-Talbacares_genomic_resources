@@ -2,7 +2,6 @@ rule all:
     input:
 
 
-
 rule trim_short:
     input:
         F = "reads/short/{short}.F.fq.gz",
@@ -19,23 +18,17 @@ rule trim_short:
         Trimming raw short reads with fastp
         """
     params:
-        in1 = "--in1 {input.F}",
-        in2 = "--in2 {input.R}",
-        out1 = "--out1 {output.F}",
-        out2 = "--out1 {output.R}",
         cut_type = "--cut_front --cut_tail", 
         cut_window = "--cut_window_size 5",
         cut_qual = "--cut_mean_quality 15",
         adapters = "--detect_adapter_for_pe",
-        length_req = "--length_required "   #TODO FIGURE THIS VALUE OUT
+        length_req = "--length_required 50"   #TODO FIGURE THIS VALUE OUT
         q = "-q 15",
         u = "-u 50",
         correction = "--correction"
-        html = "-h {log.html}",
-        json = "-j {log.json}"
     shell:
         """
-        fastp {params} &> {log.txt}
+        fastp --in1 {input.F} --in2 {input.R} -h {log.html} -j {log.json} {params} &> {log.txt}
         """
 
 
