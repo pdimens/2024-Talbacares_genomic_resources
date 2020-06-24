@@ -17,18 +17,19 @@ rule trim_short:
         """
         Trimming raw short reads with fastp
         """
+    threads: 16
     params:
         cut_type = "--cut_front --cut_tail", 
         cut_window = "--cut_window_size 5",
         cut_qual = "--cut_mean_quality 15",
         adapters = "--detect_adapter_for_pe",
-        length_req = "--length_required 50"   #TODO FIGURE THIS VALUE OUT
+        length_req = "--length_required 50",   #TODO FIGURE THIS VALUE OUT
         q = "-q 15",
         u = "-u 50",
-        correction = "--correction"
+        correction = "--correction",
     shell:
         """
-        fastp --in1 {input.F} --in2 {input.R} -h {log.html} -j {log.json} {params} &> {log.txt}
+        fastp --thread {threads} --in1 {input.F} --in2 {input.R} -h {log.html} -j {log.json} {params} &> {log.txt}
         """
 
 
