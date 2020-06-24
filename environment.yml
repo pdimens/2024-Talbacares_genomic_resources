@@ -39,6 +39,7 @@ dependencies:
   - docutils=0.15.2=py36_0
   - dropbox=10.1.1=pyh9f0ad1d_0
   - expat=2.2.9=he1b5a44_2
+  - fastp=0.20.1=h8b12597_0
   - filechunkio=1.6=py36_0
   - flye=2.7.1=py36h7f0b59b_1
   - fontconfig=2.13.1=h86ecdb6_1001
