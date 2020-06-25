@@ -116,7 +116,8 @@ rule dbg2olc:
         longreads = "reads/long/{prefix}.pb.fasta",
         kmergenie = "kmergenie/long/{prefix}.best.k"
     output:
-        contigs = "dbg2olc/{prefix}_backbone_raw.fasta"
+        contigs = "dbg2olc/{prefix}_backbone_raw.fasta",
+        contig_info = "dbg2olc/{prefix}_consensus_info.txt"
     message:
         """
         Assembling long and short reads with DBG2OLC
@@ -133,5 +134,6 @@ rule dbg2olc:
         KCOV=$(grep "for best k:" {kmer} | grep -o '[^ ]*$')
         mkdir dbg2olc && cd dbg2olc
         DBG2OLC k $KMER KmerCovTh $KCOV Contigs ../{input.sparse} f ../{input.longreads} {params}
-        mv backbone_raw.fasta ../{output}
+        mv backbone_raw.fasta ../{output.contigs}
+        mv DBG2OLC_Consensus_info.txt ../{output.contig_info}
         """
