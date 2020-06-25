@@ -137,3 +137,28 @@ rule dbg2olc:
         mv backbone_raw.fasta ../{output.contigs}
         mv DBG2OLC_Consensus_info.txt ../{output.contig_info}
         """
+
+rule consensus:
+    input:
+        longreads = "reads/long/{prefix}.pb.fasta",
+        dbg_contigs = "dbg2olc/{prefix}_backbone_raw.fasta",
+        short_contigs = "sparseassembler/{prefix}_contigs.txt",
+        contig_info = "dbg2olc/{prefix}_consensus_info.txt"
+    output:
+        consensus = "consensus/{prefix}_consensus.fasta",
+        concat_contigs = "consensus/{prefix}_contigs.pb.fasta"
+    log: "consensus/{prefix}_consensus.log"
+    message:
+        """
+        Using BLASR + Sparc to perform a consensus
+        """
+    params:
+        
+    shell:
+        """
+        mkdir -p consensus && cd consensus
+        cat ../{input.short_contigs} ../{input.longreads} > ../{output.concat_contigs}
+        ulimit -n unlimited
+        ../software/dbg2olc/split_and_run_sparc.sh ../{input.dgb_contigs} ../{input.contig_info}  ../{output.concat_contigs} . 1 3 > ../{log}
+        mv final_assembly.fasta ../{output.consensus}
+        """
