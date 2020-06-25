@@ -54,7 +54,7 @@ rule kmergenie_short:
         """
         mkdir -p kmergenie/short/ && cd kmergenie/short
         echo -e "{input.F}\n{input.R}" > shortreads.txt
-        ../../software/kmergenie-1.7051/kmergenie shortreads.txt -t {threads} {params} > {output.best_k} 
+        ../../software/kmergenie-1.7051/kmergenie shortreads.txt -t {threads} {params} > {short}.best.k
         """
 
 
@@ -79,7 +79,7 @@ rule kmergenie_long:
         """
         mkdir -p kmergenie/long/ && cd kmergenie/long
         echo -e "{input.long_reads}\n{input.short_contigs}" > longreads.txt
-        ../../software/kmergenie-1.7051/kmergenie longreads.txt -t {threads} {params} > {output.best_k} 
+        ../../software/kmergenie-1.7051/kmergenie longreads.txt -t {threads} {params} > {long}.best.k 
         """
 
 rule sparseassembler:
