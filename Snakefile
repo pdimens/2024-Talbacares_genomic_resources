@@ -23,7 +23,7 @@ rule trim_short:
         cut_window = "--cut_window_size 5",
         cut_qual = "--cut_mean_quality 15",
         adapters = "--detect_adapter_for_pe",
-        length_req = "--length_required 50",
+        length_req = "--length_required 100",
         q = "-q 15",
         u = "-u 50",
         correction = "--correction"
