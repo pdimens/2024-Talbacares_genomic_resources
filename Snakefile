@@ -103,7 +103,7 @@ rule sparseassembler:
         """
     shell:
         """
-        KMER=$(grep "^best k:" {kmer} | grep -o '[^ ]*$')
+        KMER=$(grep "^best k:" {input.kmer} | grep -o '[^ ]*$')
         mkdir sparseassembler && cd sparseassembler
         SparseAssembler k $KMER i1 ../{input.in1} i2 ../{input.in2} {params}
         mv Contigs.txt ../{output}
@@ -114,7 +114,7 @@ rule dbg2olc:
     input:
         sparse = "sparseassembler/{prefix}_contigs.txt",
         longreads = "reads/long/{prefix}.pb.fasta",
-        kmergenie = "kmergenie/long/{prefix}.best.k"
+        kmer = "kmergenie/long/{prefix}.best.k"
     output:
         contigs = "dbg2olc/{prefix}_backbone_raw.fasta",
         contig_info = "dbg2olc/{prefix}_consensus_info.txt"
@@ -130,8 +130,8 @@ rule dbg2olc:
         rm_chimera = "RemoveChimera 1"
     shell:
         """
-        KMER=$(grep "^best k:" {kmer} | grep -o '[^ ]*$')
-        KCOV=$(grep "for best k:" {kmer} | grep -o '[^ ]*$')
+        KMER=$(grep "^best k:" {input.kmer} | grep -o '[^ ]*$')
+        KCOV=$(grep "for best k:" {input.kmer} | grep -o '[^ ]*$')
         mkdir dbg2olc && cd dbg2olc
         DBG2OLC k $KMER KmerCovTh $KCOV Contigs ../{input.sparse} f ../{input.longreads} {params}
         mv backbone_raw.fasta ../{output.contigs}
