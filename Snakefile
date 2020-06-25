@@ -78,10 +78,10 @@ rule kmergenie_long:
         """
     shell:
         """
-        mkdir -p kmergenie/long/
-        echo -e "{input.long_reads}\n{input.short_contigs}" > kmergenie/long/longreads.txt
-        ./software/kmergenie-1.7051/kmergenie kmergenie/long/longreads.txt -t {threads} {params} > {output.best_k}
-        mv ./*_report.html {log.k_report}
+        mkdir -p kmergenie/long/ && cd kmergenie/long/
+        echo -e "{input.long_reads}\n{input.short_contigs}" > ../../kmergenie/long/longreads.txt
+        ../../software/kmergenie-1.7051/kmergenie longreads.txt -t {threads} {params} > ../../{output.best_k}
+        mv ./*_report.html ../../{log.k_report}
         """
 
 rule sparseassembler:
