@@ -52,9 +52,9 @@ rule kmergenie_short:
         """
     shell:
         """
-        mkdir -p kmergenie/short/
-        echo -e "{input.F}\n{input.R}" > kmergenie/short/shortreads.txt
-        ./software/kmergenie-1.7051/kmergenie kmergenie/short/shortreads.txt -t {threads} {params} > {output.best_k}
+        mkdir -p kmergenie/short/ && cd kmergenie/short
+        echo -e "../../{input.F}\n../../{input.R}" > shortreads.txt
+        ../../software/kmergenie-1.7051/kmergenie shortreads.txt -t {threads} {params} > ../../{output.best_k}
         mv ./*_report.html {log.k_report}
         """
 
@@ -104,7 +104,7 @@ rule sparseassembler:
     shell:
         """
         KMER=$(grep "^best k:" {input.kmer} | grep -o '[^ ]*$')
-        mkdir sparseassembler && cd sparseassembler
+        mkdir -p sparseassembler && cd sparseassembler
         SparseAssembler k $KMER i1 ../{input.in1} i2 ../{input.in2} {params}
         mv Contigs.txt ../{output}
         """
