@@ -1,2 +1,10 @@
-reads/
 .snakemake/
+consensus/
+dbg2olc/
+kmergenie/
+MEC/
+reads/
+sparseassembler/
+polish/
+purge_haplo_1/
+purge_haplo_2/
