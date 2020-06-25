@@ -7,8 +7,8 @@ rule trim_short:
         F = "reads/short/{short}.illumina.F.fq.gz",
         R = "reads/short/{short}.illumina.R.fq.gz"
     output:
-        F = "reads/short_trimmed/{short}.illumina.R1.fq.gz",
-        R = "reads/short_trimmed/{short}.illumina.R2.fq.gz"
+        F = "reads/short_trimmed/{short}.illumina.R1.fq",
+        R = "reads/short_trimmed/{short}.illumina.R2.fq"
     log:
         json = "reads/short_trimmed/{short}.json",
         html = "reads/short_trimmed/{short}.html",
@@ -35,8 +35,8 @@ rule trim_short:
 
 rule kmergenie_short:
     input:
-        F = "reads/short_trimmed/{short}.illumina.R1.fq.gz",
-        R = "reads/short_trimmed/{short}.illumina.R2.fq.gz"
+        F = "reads/short_trimmed/{short}.illumina.R1.fq",
+        R = "reads/short_trimmed/{short}.illumina.R2.fq"
     output:
         best_k = "kmergenie/short/{short}.best.k"
     log:
@@ -80,22 +80,6 @@ rule kmergenie_long:
         mkdir -p kmergenie/long/ && cd kmergenie/long
         echo -e "{input.long_reads}\n{input.short_contigs}" > longreads.txt
         ../../software/kmergenie-1.7051/kmergenie longreads.txt -t {threads} {params} > {output.best.k} 
-        """
-
-rule decompress:
-    input:
-        in1 = "reads/short_trimmed/{short}.illumina.R1.fq.gz",
-        in2 = "reads/short_trimmed/{short}.illumina.R2.fq.gz"
-    output:
-        in1 = "reads/short_trimmed/{short}.illumina.R1.fq",
-        in2 = "reads/short_trimmed/{short}.illumina.R2.fq"
-    message:
-        """
-        Decompressing short reads for SparseAssembler
-        """
-    shell:
-        """
-        gunzip {input}
         """
 
 rule sparseassembler:
