@@ -44,7 +44,7 @@ rule kmergenie_short:
     params:
         kmin = "-l 20",
         kmax = "-k 120",
-        out_prefix = "-o {short}"  
+        out_prefix = "-o {short}"
     threads: 16
     message:
         """
@@ -52,9 +52,10 @@ rule kmergenie_short:
         """
     shell:
         """
-        mkdir -p kmergenie/short/ && cd kmergenie/short
-        echo -e "{input.F}\n{input.R}" > shortreads.txt
-        ../../software/kmergenie-1.7051/kmergenie shortreads.txt -t {threads} {params} > {short}.best.k
+        mkdir -p kmergenie/short/
+        echo -e "{input.F}\n{input.R}" > kmergenie/short/shortreads.txt
+        ./software/kmergenie-1.7051/kmergenie kmergenie/short/shortreads.txt -t {threads} {params} > {output.best_k}
+        mv ./*_report.html {log.k_report}
         """
 
 
@@ -77,9 +78,10 @@ rule kmergenie_long:
         """
     shell:
         """
-        mkdir -p kmergenie/long/ && cd kmergenie/long
-        echo -e "{input.long_reads}\n{input.short_contigs}" > longreads.txt
-        ../../software/kmergenie-1.7051/kmergenie longreads.txt -t {threads} {params} > {long}.best.k 
+        mkdir -p kmergenie/long/
+        echo -e "{input.long_reads}\n{input.short_contigs}" > kmergenie/long/longreads.txt
+        ./software/kmergenie-1.7051/kmergenie kmergenie/long/longreads.txt -t {threads} {params} > {output.best_k}
+        mv ./*_report.html {log.k_report}
         """
 
 rule sparseassembler:
@@ -101,10 +103,10 @@ rule sparseassembler:
         """
     shell:
         """
-        mkdir sparseassembler && cd sparseassembler
         KMER=$(grep "^best k:" {kmer} | grep -o '[^ ]*$')
+        mkdir sparseassembler && cd sparseassembler
         SparseAssembler k $KMER i1 ../{input.in1} i2 ../{input.in2} {params}
-        mv Contigs.txt {short}_contigs.txt
+        mv Contigs.txt ../{output}
         """
 
 
@@ -127,9 +129,9 @@ rule dbg2olc:
         rm_chimera = "RemoveChimera 1"
     shell:
         """
-        mkdir dbg2olc && cd dbg2olc
         KMER=$(grep "^best k:" {kmer} | grep -o '[^ ]*$')
         KCOV=$(grep "for best k:" {kmer} | grep -o '[^ ]*$')
+        mkdir dbg2olc && cd dbg2olc
         DBG2OLC k $KMER KmerCovTh $KCOV Contigs ../{input.sparse} f ../{input.longreads} {params}
-        mv backbone_raw.fasta {prefix}_backbone_raw.fasta
+        mv backbone_raw.fasta ../{output}
         """
