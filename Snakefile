@@ -78,7 +78,7 @@ rule kmergenie_long:
     shell:
         """
         mkdir -p kmergenie/long/ && cd kmergenie/long/
-        echo -e "{input.long_reads}\n{input.short_contigs}" > ../../kmergenie/long/longreads.txt
+        echo -e "../../{input.long_reads}\n../../{input.short_contigs}" > ../../kmergenie/long/longreads.txt
         ../../software/kmergenie-1.7051/kmergenie longreads.txt -t {threads} {params} > ../../{output.best_k}
         """
 
@@ -91,7 +91,7 @@ rule sparseassembler:
         contigs = "sparseassembler/{short}_contigs.txt"
     params:
         genome_size = "GS 2000000000",
-        node_thresh = "NodeCovTh 2",
+        #node_thresh = "NodeCovTh 2",
         edge_thresh = "EdgeCovTh 1",
         g_thresh = "g 15",
         ld_val = "LD 0"
@@ -102,8 +102,9 @@ rule sparseassembler:
     shell:
         """
         KMER=$(grep "^best k:" {input.kmer} | grep -o '[^ ]*$')
+        KCOV=$(grep "for best k:" {input.kmer} | grep -o '[^ ]*$')
         mkdir -p sparseassembler && cd sparseassembler
-        SparseAssembler k $KMER i1 ../{input.in1} i2 ../{input.in2} {params}
+        SparseAssembler k $KMER NodeCovTh $KCOV i1 ../{input.in1} i2 ../{input.in2} {params}
         mv Contigs.txt ../{output}
         """
 
