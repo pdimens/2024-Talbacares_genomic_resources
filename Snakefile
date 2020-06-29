@@ -128,14 +128,14 @@ rule dbg2olc:
         rm_chimera = "RemoveChimera 1"
     shell:
         """
-        mkdir dbg2olc && cd dbg2olc
+        mkdir -p dbg2olc && cd dbg2olc
         KMER=$(grep "^best k:" ../{input.kmer} | grep -o '[^ ]*$')
         echo ${{KMER}}
         KCOV=$(grep "for best k:" ../{input.kmer} | grep -o '[^ ]*$')
         echo ${{KCOV}}
-        DBG2OLC k ${{KMER}} KmerCovTh ${{KCOV}} Contigs ../{input.sparse} f ../{input.longreads} {params}
-        mv backbone_raw.fasta ../{output.contigs}
-        mv DBG2OLC_Consensus_info.txt ../{output.contig_info}
+        #DBG2OLC k ${{KMER}} KmerCovTh ${{KCOV}} Contigs ../{input.sparse} f ../{input.longreads} {params}
+        #mv backbone_raw.fasta ../{output.contigs}
+        #mv DBG2OLC_Consensus_info.txt ../{output.contig_info}
         """
 
 rule consensus:
