@@ -124,14 +124,13 @@ rule dbg2olc:
     params:
         ld_val = "LD 0",
         adaptive_theta = "AdaptiveTh 0.001",
-        #kmer_cov_thresh = "KmerCovTh 3",
         min_overlap = "MinOverlap 50",
         rm_chimera = "RemoveChimera 1"
     shell:
         """
-        KMER=$(grep "^best k:" {input.kmer} | grep -o '[^ ]*$')
-        KCOV=$(grep "for best k:" {input.kmer} | grep -o '[^ ]*$')
         mkdir dbg2olc && cd dbg2olc
+        KMER=$(grep "^best k:" ../{input.kmer} | grep -o '[^ ]*$')
+        KCOV=$(grep "for best k:" ../{input.kmer} | grep -o '[^ ]*$')
         DBG2OLC k $KMER KmerCovTh $KCOV Contigs ../{input.sparse} f ../{input.longreads} {params}
         mv backbone_raw.fasta ../{output.contigs}
         mv DBG2OLC_Consensus_info.txt ../{output.contig_info}
