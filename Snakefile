@@ -1,5 +1,5 @@
 rule all:
-    input: "dbg2olc/YFT_backbone_raw.fasta"
+    input: "dbg/YFT_backbone_raw.fasta"
 
 
 rule trim_short:
