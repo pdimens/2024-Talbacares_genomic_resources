@@ -130,8 +130,10 @@ rule dbg2olc:
         """
         mkdir dbg2olc && cd dbg2olc
         KMER=$(grep "^best k:" ../{input.kmer} | grep -o '[^ ]*$')
+        echo ${{KMER}}
         KCOV=$(grep "for best k:" ../{input.kmer} | grep -o '[^ ]*$')
-        DBG2OLC k $KMER KmerCovTh $KCOV Contigs ../{input.sparse} f ../{input.longreads} {params}
+        echo ${{KCOV}}
+        DBG2OLC k ${{KMER}} KmerCovTh ${{KCOV}} Contigs ../{input.sparse} f ../{input.longreads} {params}
         mv backbone_raw.fasta ../{output.contigs}
         mv DBG2OLC_Consensus_info.txt ../{output.contig_info}
         """
