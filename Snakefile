@@ -1,5 +1,5 @@
 rule all:
-    input: "dbg/YFT_backbone_raw.fasta"
+    input: "dbg2olc/YFT_backbone_raw.fasta"
 
 
 rule trim_short:
@@ -116,8 +116,8 @@ rule dbg2olc:
         longreads = "reads/long/{prefix}.pb.fasta",
         kmer = "kmergenie/long/{prefix}.best.k"
     output:
-        contigs = "dbg/{prefix}_backbone_raw.fasta",
-        contig_info = "dbg/{prefix}_consensus_info.txt"
+        contigs = "dbg2olc/{prefix}_backbone_raw.fasta",
+        contig_info = "dbg2olc/{prefix}_consensus_info.txt"
     message:
         """
         Assembling long and short reads with DBG2OLC
@@ -129,11 +129,11 @@ rule dbg2olc:
         rm_chimera = "RemoveChimera 1"
     shell:
         """
-        mkdir -p dbg
-        cd dbg
+        mkdir -p dbg2olc
+        cd dbg2olc
         KMER=$(grep "^best k:" ../{input.kmer} | grep -o '[^ ]*$')
         KCOV=$(grep "for best k:" ../{input.kmer} | grep -o '[^ ]*$')
-        DBG2OLC k $KMER KmerCovTh $KCOV Contigs ../{input.sparse} f ../{input.longreads} {params}
+        DBG2OLC k $KMER KmerCovTh $KCOV Contigs ../{input.sparse} f ../{input.longreads} {params} > dbg.log
         mv backbone_raw.fasta ../{output.contigs}
         mv DBG2OLC_Consensus_info.txt ../{output.contig_info}
         """
