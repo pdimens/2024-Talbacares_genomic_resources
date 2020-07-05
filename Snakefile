@@ -124,6 +124,8 @@ rule dbg2olc:
         """
     params:
         ld_val = "LD 0",
+        kmer = "k 107",
+        k_coverage = "KmerCovTh 3",
         adaptive_theta = "AdaptiveTh 0.001",
         min_overlap = "MinOverlap 50",
         rm_chimera = "RemoveChimera 1"
@@ -131,9 +133,9 @@ rule dbg2olc:
         """
         mkdir -p dbg2olc
         cd dbg2olc
-        KMER=$(grep "^best k:" ../{input.kmer} | grep -o '[^ ]*$')
-        KCOV=$(grep "for best k:" ../{input.kmer} | grep -o '[^ ]*$')
-        DBG2OLC k $KMER KmerCovTh $KCOV Contigs ../{input.sparse} f ../{input.longreads} {params} > dbg.log
+        #KMER=$(grep "^best k:" ../{input.kmer} | grep -o '[^ ]*$')
+        #KCOV=$(grep "for best k:" ../{input.kmer} | grep -o '[^ ]*$')
+        DBG2OLC Contigs ../{input.sparse} f ../{input.longreads} {params} > dbg.log
         mv backbone_raw.fasta ../{output.contigs}
         mv DBG2OLC_Consensus_info.txt ../{output.contig_info}
         """
