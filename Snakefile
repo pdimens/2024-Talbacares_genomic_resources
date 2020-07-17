@@ -123,13 +123,15 @@ rule correct_subreads:
         """
         Correcting long reads using short reads using {threads} threads"
         """
+    log:
+        corr_log = expand("reads/long_corr/{{prefix}}_{cell}.log", cell = subread_ID)
     shell:
         """
         mkdir -p reads/long_corr && cd reads/long_corr
         for i in {input.longreads}; do
             OUTF=$(basename $i .subreads.fasta)
             echo "Performing error correction on $i"
-            lordec-correct -2 ../../{input.short_F} ../../{input.short_R} -k 21 -s 3 -i ../../$i -T {threads} -o ${{OUTF}}.corrected.fasta
+            lordec-correct -2 ../../{input.short_F} ../../{input.short_R} -k 21 -s 3 -i ../../$i -T {threads} -o ${{OUTF}}.corrected.fasta -S ${{OUTF}}.log
             cat ${{OUTF}}.corrected.fasta >> ../../{output}
         done
         """
