@@ -61,13 +61,13 @@ rule kmergenie_short:
 rule kmergenie_long:
     input:
         long_reads = "reads/long/{long}.pb.fasta",
-        short_contigs = "sparseassembler/{long}_contigs.txt"
+        #short_contigs = "sparseassembler/{long}_contigs.txt"
     output:
         best_k = "kmergenie/long/{long}.best.k"
     log:
         k_report = "kmergenie/long/{long}_report.html"
     params:
-        kmin = "-l 30",
+        kmin = "-l 20",
         kmax = "-k 200",
         out_prefix = "-o {long}"
     threads: 16  
@@ -78,7 +78,7 @@ rule kmergenie_long:
     shell:
         """
         mkdir -p kmergenie/long/ && cd kmergenie/long/
-        echo -e "../../{input.long_reads}\n../../{input.short_contigs}" > ../../kmergenie/long/longreads.txt
+        echo -e "../../{input.long_reads}" > ../../kmergenie/long/longreads.txt
         ../../software/kmergenie-1.7051/kmergenie longreads.txt -t {threads} {params} > ../../{output.best_k}
         """
 
@@ -124,9 +124,9 @@ rule dbg2olc:
         """
     params:
         ld_val = "LD 0",
-        kmer = "k 107",
-        k_coverage = "KmerCovTh 3",
-        adaptive_theta = "AdaptiveTh 0.001",
+        kmer = "k 31",
+        k_coverage = "KmerCovTh 2",
+        adaptive_theta = "AdaptiveTh 0.01",
         min_overlap = "MinOverlap 50",
         rm_chimera = "RemoveChimera 1"
     shell:
