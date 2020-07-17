@@ -131,7 +131,7 @@ rule correct_subreads:
         for i in {input.longreads}; do
             OUTF=$(basename $i .subreads.fasta)
             echo "Performing error correction on $i"
-            lordec-correct -2 ../../{input.short_F} ../../{input.short_R} -k 21 -s 3 -i ../../$i -T {threads} -o ${{OUTF}}.corrected.fasta -S ${{OUTF}}.log > ${{OUTF}}.info 
+            lordec-correct -2 ../../{input.short_F} ../../{input.short_R} -k 21 -s 3 -i ../../$i -T {threads} -o ${{OUTF}}.corrected.fasta -S ${{OUTF}}.log &> ${{OUTF}}.info 
             cat ${{OUTF}}.corrected.fasta >> ../../{output}
         done
         """
