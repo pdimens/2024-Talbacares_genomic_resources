@@ -128,7 +128,7 @@ rule correct_subreads:
         mkdir -p reads/long_corr && cd reads/long_corr
         for i in {input.longreads}; do
             OUTF=$(basename $i .subreads.fasta)
-            lordec-correct -2 ../../{input.short_F} ../../{input.short_R} -k 21 -s 3 -i ../../$i -T {threads} -o ${OUTF}.corrected.fasta
+            lordec-correct -2 ../../{input.short_F} ../../{input.short_R} -k 21 -s 3 -i ../../$i -T {threads} -o ${{OUTF}}.corrected.fasta
             cat ${OUTF}.corrected.fasta >> ../../{output}
         done
         """
