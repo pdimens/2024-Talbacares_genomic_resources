@@ -1,5 +1,5 @@
 rule all:
-    input: "consensus/YFT_contigs.pb.fasta"
+    input: "consensus/YFT_consensus.fasta"
 
 
 rule trim_short:
