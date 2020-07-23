@@ -28,16 +28,7 @@ fi
 mkdir -p $split_dir
 
 echo -e "\t-- splitting reads --"
-if [ $splitversion -eq 1 ]; then
- ../software/dbg2olc/split_reads_by_backbone.py -b ${backbone_fasta} -o ${split_dir} -r ${reads_fasta} -c ${consensus_fasta} 
-elif [ $splitversion -eq 2 ]; then
- ../software/dbg2olc/split_reads_by_backbone_readdict.py -b ${backbone_fasta} -o ${split_dir} -r ${reads_fasta} -c ${consensus_fasta} 
-elif [ $splitversion -eq 3 ]; then
- ../software/dbg2olc/split_reads_by_backbone_openclose.py -b ${backbone_fasta} -o ${split_dir} -r ${reads_fasta} -c ${consensus_fasta} 
-else
- echo "split version (argument #6) needs to be 1 2 or 3. Default = 3"
- exit
-fi
+python2 $(realpath ../software/dbg2olc/split_reads_by_backbone_openclose.py) -b ${backbone_fasta} -o ${split_dir} -r ${reads_fasta} -c ${consensus_fasta} 
 
 for file in $(find ${split_dir} -name "*.reads.fasta"); do
     chunk=`basename $file .reads.fasta`
