@@ -140,12 +140,24 @@ rule dbg2olc:
         mv DBG2OLC_Consensus_info.txt ../{output.contig_info}
         """
 
-rule consensus:
+rule concat_contigs:
     input:
         longreads = "reads/long/{prefix}.pb.fasta",
-        dbg_contigs = "dbg2olc/{prefix}_backbone_raw.fasta",
         short_contigs = "sparseassembler/{prefix}_contigs.txt",
-        contig_info = "dbg2olc/{prefix}_consensus_info.txt"
+    output:
+        concat_contigs = "consensus/{prefix}_contigs.pb.fasta"
+    message: "Concatenating contigs for consensus"
+    shell:
+    """
+    mkdir -p consensus/tmp && cd consensus
+    cat ../{input.short_contigs} ../{input.longreads} > ../{output.concat_contigs}
+    """
+
+rule consensus:
+    input:
+        dbg_contigs = "dbg2olc/{prefix}_backbone_raw.fasta",
+        contig_info = "dbg2olc/{prefix}_consensus_info.txt",
+        concat_contigs = "consensus/{prefix}_contigs.pb.fasta"
     output:
         consensus = "consensus/{prefix}_consensus.fasta",
         concat_contigs = "consensus/{prefix}_contigs.pb.fasta"
@@ -160,9 +172,7 @@ rule consensus:
         """
         DBG_CONT=$(realpath {input.dbg_contigs})
         CONT_INF=$(realpath {input.contig_info})
-        mkdir -p consensus/tmp && cd consensus
-        cat ../{input.short_contigs} ../{input.longreads} > ../{output.concat_contigs}
-        CONTIGS=$(realpath ../{output.concat_contigs})
+        CONTIGS=$(realpath ../{input.concat_contigs})
         TMPDIR=$(realpath ./tmp)
         ../software/dbg2olc/split_and_run_sparc.sh $DBG_CONT $CONT_INF $CONTIGS $TMPDIR 2 3 > ../{log}
         mv final_assembly.fasta ../{output.consensus}
