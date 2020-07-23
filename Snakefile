@@ -160,6 +160,6 @@ rule consensus:
         """
         mkdir -p consensus && cd consensus
         cat ../{input.short_contigs} ../{input.longreads} > ../{output.concat_contigs}
-        ../software/dbg2olc/split_and_run_sparc.sh ../{input.dbg_contigs} ../{input.contig_info}  ../{output.concat_contigs} . 1 3 > ../{log}
+        ../software/dbg2olc/split_and_run_sparc.sh ../{input.dbg_contigs} ../{input.contig_info}  ../{output.concat_contigs} . 2 3 > ../{log}
         mv final_assembly.fasta ../{output.consensus}
         """

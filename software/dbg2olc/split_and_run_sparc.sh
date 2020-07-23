@@ -24,7 +24,7 @@ else
 fi
 
 # if dir not there, make it; else clean the dir out
-rm -rf $split_dir
+#rm -rf $split_dir
 mkdir -p $split_dir
 
 echo -e "\t-- splitting reads --"

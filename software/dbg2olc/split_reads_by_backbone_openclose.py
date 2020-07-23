@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 from SeqIO import ParseFasta
 from collections import defaultdict
