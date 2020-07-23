@@ -56,12 +56,12 @@ for file in $(find ${split_dir} -name "*.reads.fasta"); do
         fi
 
     done
-
+    echo $cmd
     eval $cmd
 
     #to save space
     cmd="rm ${split_dir}/${chunk}.mapped.m5"
-    eval $cmd
+    #eval $cmd
     cmd="rm ${split_dir}/${chunk}.reads.fasta"
     eval $cmd
 
