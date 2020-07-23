@@ -158,8 +158,11 @@ rule consensus:
         
     shell:
         """
+        DBG_CONT=$(realpath {input.dbg_contigs})
+        CONT_INF=$(realpath {input.contig_info})  
         mkdir -p consensus && cd consensus
         cat ../{input.short_contigs} ../{input.longreads} > ../{output.concat_contigs}
-        ../software/dbg2olc/split_and_run_sparc.sh ../{input.dbg_contigs} ../{input.contig_info}  ../{output.concat_contigs} . 2 3 > ../{log}
+        CONTIGS=$(realpath ../{output.concat_contigs})
+        ../software/dbg2olc/split_and_run_sparc.sh $DBG_CONT $CONT_INF $CONTIGS tmp 2 3 > ../{log}
         mv final_assembly.fasta ../{output.consensus}
         """
