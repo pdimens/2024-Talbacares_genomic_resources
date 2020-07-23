@@ -173,8 +173,9 @@ rule consensus:
         mkdir -p consensus/tmp
         DBG_CONT=$(realpath {input.dbg_contigs})
         CONT_INF=$(realpath {input.contig_info})
-        CONTIGS=$(realpath ../{input.concat_contigs})
-        TMPDIR=$(realpath ./tmp)
+        CONTIGS=$(realpath  {input.concat_contigs})
+        TMPDIR=$(realpath consensus/tmp)
+        cd consensus
         ../software/dbg2olc/split_and_run_sparc.sh $DBG_CONT $CONT_INF $CONTIGS $TMPDIR {params} > ../{log}
-        mv final_assembly.fasta ../{output.consensus}
+        mv tmp/final_assembly.fasta ../{output.consensus}
         """
