@@ -1,5 +1,5 @@
 rule all:
-    input: "dbg2olc/YFT_backbone_raw.fasta"
+    input: "consensus/YFT_consensus.fasta"
 
 
 rule trim_short:
@@ -109,37 +109,11 @@ rule sparseassembler:
         mv Contigs.txt ../{output}
         """
 
-subread_ID = ["180128_031917", "180129_134945", "180129_235614", "180130_100559", "180130_201553", "180131_062548", "180201_180543", "180202_041158", "180202_142150", "180508_113538", "180513_001303", "180513_103146", "180513_205218"]
-
-rule correct_subreads:
-    input:
-        short_F = "reads/short_trimmed/{prefix}.illumina.R1.fq",
-        short_R = "reads/short_trimmed/{prefix}.illumina.R2.fq",
-        longreads = expand("reads/long/{{prefix}}_{cell}.subreads.fasta", cell = subread_ID)
-    output:
-        cat_file = "reads/long_corr/{prefix}.corrected.subreads.fasta"
-    threads: 16
-    message:
-        """
-        Correcting long reads using short reads using {threads} threads"
-        """
-    log:
-        corr_log = expand("reads/long_corr/{{prefix}}_{cell}.log", cell = subread_ID)
-    shell:
-        """
-        mkdir -p reads/long_corr && cd reads/long_corr
-        for i in {input.longreads}; do
-            OUTF=$(basename $i .subreads.fasta)
-            echo "Performing error correction on $i"
-            lordec-correct -2 ../../{input.short_F} ../../{input.short_R} -k 21 -s 3 -i ../../$i -T {threads} -o ${{OUTF}}.corrected.fasta -S ${{OUTF}}.log &> ${{OUTF}}.info 
-            cat ${{OUTF}}.corrected.fasta >> ../../{output}
-        done
-        """
 
 rule dbg2olc:
     input:
         sparse = "sparseassembler/{prefix}_contigs.txt",
-        longreads = "reads/long_corr/{prefix}.corrected.subreads.fasta",
+        longreads = "reads/long/{prefix}.pb.fasta",
         kmer = "kmergenie/long/{prefix}.best.k"
     output:
         contigs = "dbg2olc/{prefix}_backbone_raw.fasta",
@@ -166,7 +140,6 @@ rule dbg2olc:
         mv DBG2OLC_Consensus_info.txt ../{output.contig_info}
         """
 
-
 rule consensus:
     input:
         longreads = "reads/long/{prefix}.pb.fasta",
@@ -187,7 +160,7 @@ rule consensus:
         """
         mkdir -p consensus && cd consensus
         cat ../{input.short_contigs} ../{input.longreads} > ../{output.concat_contigs}
-        ulimit -n unlimited
-        ../software/dbg2olc/split_and_run_sparc.sh ../{input.dgb_contigs} ../{input.contig_info}  ../{output.concat_contigs} . 1 3 > ../{log}
+        #ulimit -n unlimited
+        ../software/dbg2olc/split_and_run_sparc.sh ../{input.dbg_contigs} ../{input.contig_info}  ../{output.concat_contigs} . 1 3 > ../{log}
         mv final_assembly.fasta ../{output.consensus}
         """

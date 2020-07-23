@@ -35,7 +35,7 @@ elif [ $splitversion -eq 2 ]; then
 elif [ $splitversion -eq 3 ]; then
  python2 ../software/dbg2olc/split_reads_by_backbone_openclose.py -b ${backbone_fasta} -o ${split_dir} -r ${reads_fasta} -c ${consensus_fasta} 
 else
- echo "splitversion (argument #6) needs to be 1, 2, or 3. If left blank, default is 3."
+ echo "split version argument needs to be 1 2 or 3. Default = 3"
  exit
 fi
 
@@ -72,5 +72,5 @@ for file in $(find ${split_dir} -name "*.reads.fasta"); do
 
 done
 
-echo="merging consensus reads to ${split_dir}/final_assembly.fasta"
+echo "merging consensus reads to ${split_dir}/final_assembly.fasta"
 for f in ${split_dir}/*.consensus.fasta; do cat "$f" >> ${split_dir}/final_assembly.fasta; done
