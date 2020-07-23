@@ -145,7 +145,7 @@ rule concat_contigs:
         longreads = "reads/long/{prefix}.pb.fasta",
         short_contigs = "sparseassembler/{prefix}_contigs.txt",
     output:
-        concat_contigs = "consensus/{prefix}_contigs.pb.fasta"
+        concat_contigs = "reads/consensus_concat/{prefix}_contigs.pb.fasta"
     message: "Concatenating contigs for consensus"
     shell:
         """
@@ -156,7 +156,7 @@ rule consensus:
     input:
         dbg_contigs = "dbg2olc/{prefix}_backbone_raw.fasta",
         contig_info = "dbg2olc/{prefix}_consensus_info.txt",
-        concat_contigs = "consensus/{prefix}_contigs.pb.fasta"
+        concat_contigs = "reads/consensus_concat/{prefix}_contigs.pb.fasta"
     output:
         consensus = "consensus/{prefix}_consensus.fasta",
         concat_contigs = "consensus/{prefix}_contigs.pb.fasta"
