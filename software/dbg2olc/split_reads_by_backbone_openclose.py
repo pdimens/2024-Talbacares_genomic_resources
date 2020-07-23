@@ -1,12 +1,13 @@
 #!/usr/bin/env python2
 
-from SeqIO import ParseFasta
+#from SeqIO import ParseFasta
 from collections import defaultdict
 from optparse import OptionParser
 from sets import Set
 import os, sys
 import re
 
+execfile("./SeqIO.py")
 
 def setup_options():
     parser = OptionParser()
