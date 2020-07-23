@@ -29,11 +29,11 @@ mkdir -p $split_dir
 
 echo -e "\t-- splitting reads --"
 if [ $splitversion -eq 1 ]; then
- python2 ../software/dbg2olc/split_reads_by_backbone.py -b ${backbone_fasta} -o ${split_dir} -r ${reads_fasta} -c ${consensus_fasta} 
+ ../software/dbg2olc/split_reads_by_backbone.py -b ${backbone_fasta} -o ${split_dir} -r ${reads_fasta} -c ${consensus_fasta} 
 elif [ $splitversion -eq 2 ]; then
- python2 ../software/dbg2olc/split_reads_by_backbone_readdict.py -b ${backbone_fasta} -o ${split_dir} -r ${reads_fasta} -c ${consensus_fasta} 
+ ../software/dbg2olc/split_reads_by_backbone_readdict.py -b ${backbone_fasta} -o ${split_dir} -r ${reads_fasta} -c ${consensus_fasta} 
 elif [ $splitversion -eq 3 ]; then
- python2 ../software/dbg2olc/split_reads_by_backbone_openclose.py -b ${backbone_fasta} -o ${split_dir} -r ${reads_fasta} -c ${consensus_fasta} 
+ ../software/dbg2olc/split_reads_by_backbone_openclose.py -b ${backbone_fasta} -o ${split_dir} -r ${reads_fasta} -c ${consensus_fasta} 
 else
  echo "split version (argument #6) needs to be 1 2 or 3. Default = 3"
  exit
