@@ -1,5 +1,5 @@
 rule all:
-    input: "consensus/YFT_consensus.fasta"
+    input: "consensus/YFT_contigs.pb.fasta"
 
 
 rule trim_short:
@@ -149,8 +149,7 @@ rule concat_contigs:
     message: "Concatenating contigs for consensus"
     shell:
         """
-        mkdir -p consensus/tmp && cd consensus
-        cat ../{input.short_contigs} ../{input.longreads} > ../{output.concat_contigs}
+        cat {input} > {output}
         """
 
 rule consensus:
@@ -171,6 +170,7 @@ rule consensus:
         split_method = "3"
     shell:
         """
+        mkdir -p consensus/tmp
         DBG_CONT=$(realpath {input.dbg_contigs})
         CONT_INF=$(realpath {input.contig_info})
         CONTIGS=$(realpath ../{input.concat_contigs})
