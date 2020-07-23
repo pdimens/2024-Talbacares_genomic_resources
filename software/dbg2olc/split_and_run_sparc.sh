@@ -16,12 +16,7 @@ consensus_fasta=$2
 reads_fasta=$3
 split_dir=$4
 iterations=$5
-
-if [ $# -eq 6 ]; 
- then splitversion=$6
-else
- splitversion=3
-fi
+splitversion=3
 
 # if dir not there, make it; else clean the dir out
 #rm -rf $split_dir
@@ -51,12 +46,9 @@ for file in $(find ${split_dir} -name "*.reads.fasta"); do
     eval $cmd
 
     #to save space
-    cmd="rm ${split_dir}/${chunk}.mapped.m5"
-    #eval $cmd
-    cmd="rm ${split_dir}/${chunk}.reads.fasta"
+    cmd="rm ${split_dir}/${chunk}.mapped.m5 ${split_dir}/${chunk}.reads.fasta"
     eval $cmd
-
 done
 
 echo "merging consensus reads"
-for f in ${split_dir}/*.consensus.fasta; do cat "$f" >> ${split_dir}/final_assembly.fasta; done
+#for f in ${split_dir}/*.consensus.fasta; do cat "$f" >> ${split_dir}/final_assembly.fasta; done

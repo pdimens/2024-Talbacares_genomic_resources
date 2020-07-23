@@ -165,9 +165,6 @@ rule consensus:
         """
         Using BLASR + Sparc to perform a consensus
         """
-    params:
-        iterations = "2",
-        split_method = "3"
     shell:
         """
         mkdir -p consensus/tmp
@@ -176,6 +173,6 @@ rule consensus:
         CONTIGS=$(realpath  {input.concat_contigs})
         TMPDIR=$(realpath consensus/tmp)
         cd consensus
-        ../software/dbg2olc/split_and_run_sparc.sh $DBG_CONT $CONT_INF $CONTIGS $TMPDIR {params} > ../{log}
+        ../software/dbg2olc/split_and_run_sparc.sh $DBG_CONT $CONT_INF $CONTIGS $TMPDIR 2 > ../{log}
         mv tmp/final_assembly.fasta ../{output.consensus}
         """
