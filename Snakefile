@@ -148,10 +148,10 @@ rule concat_contigs:
         concat_contigs = "consensus/{prefix}_contigs.pb.fasta"
     message: "Concatenating contigs for consensus"
     shell:
-    """
-    mkdir -p consensus/tmp && cd consensus
-    cat ../{input.short_contigs} ../{input.longreads} > ../{output.concat_contigs}
-    """
+        """
+        mkdir -p consensus/tmp && cd consensus
+        cat ../{input.short_contigs} ../{input.longreads} > ../{output.concat_contigs}
+        """
 
 rule consensus:
     input:
@@ -167,13 +167,14 @@ rule consensus:
         Using BLASR + Sparc to perform a consensus
         """
     params:
-        
+        iterations = "2",
+        split_method = "3"
     shell:
         """
         DBG_CONT=$(realpath {input.dbg_contigs})
         CONT_INF=$(realpath {input.contig_info})
         CONTIGS=$(realpath ../{input.concat_contigs})
         TMPDIR=$(realpath ./tmp)
-        ../software/dbg2olc/split_and_run_sparc.sh $DBG_CONT $CONT_INF $CONTIGS $TMPDIR 2 3 > ../{log}
+        ../software/dbg2olc/split_and_run_sparc.sh $DBG_CONT $CONT_INF $CONTIGS $TMPDIR {params} > ../{log}
         mv final_assembly.fasta ../{output.consensus}
         """
