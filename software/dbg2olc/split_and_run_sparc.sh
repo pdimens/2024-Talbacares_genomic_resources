@@ -72,5 +72,5 @@ for file in $(find ${split_dir} -name "*.reads.fasta"); do
 
 done
 
-echo "merging consensus reads to ${split_dir}/final_assembly.fasta"
+echo "merging consensus reads"
 for f in ${split_dir}/*.consensus.fasta; do cat "$f" >> ${split_dir}/final_assembly.fasta; done
