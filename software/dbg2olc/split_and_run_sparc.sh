@@ -29,14 +29,14 @@ for file in $(find ${split_dir} -name "*.reads.fasta"); do
     chunk=`basename $file .reads.fasta`
 
     for iter in `seq 1 ${iterations}`; do
-        blasr --nproc 64 ${split_dir}/${chunk}.reads.fasta ${split_dir}/${chunk}.fasta --bestn 1 -m 5 --minMatch 19 --out ${split_dir}/${chunk}.mapped.m5
-        Sparc m ${split_dir}/${chunk}.mapped.m5 b ${split_dir}/${chunk}.fasta k 1 c 2 g 1 HQ_Prefix Contig boost 5 t 0.2 o ${split_dir}/${chunk}; 
+        blasr --nproc 16 ${split_dir}/${chunk}.reads.fasta ${split_dir}/${chunk}.fasta --bestn 1 -m 5 --minMatch 19 --out ${split_dir}/${chunk}.mapped.m5 &> /dev/null
+        Sparc m ${split_dir}/${chunk}.mapped.m5 b ${split_dir}/${chunk}.fasta k 1 c 2 g 1 HQ_Prefix Contig boost 5 t 0.2 o ${split_dir}/${chunk} 
     done
-
-    #to save space
-    cmd="rm ${split_dir}/${chunk}.mapped.m5 ${split_dir}/${chunk}.reads.fasta"
-    #eval $cmd
+    #remove after use to save space
+    rm ${split_dir}/${chunk}.mapped.m5 ${split_dir}/${chunk}.reads.fasta
 done
 
 echo "merging consensus reads"
-#for f in ${split_dir}/*.consensus.fasta; do cat "$f" >> ${split_dir}/final_assembly.fasta; done
+for f in ${split_dir}/*.consensus.fasta; do 
+    cat "$f" >> ${split_dir}/final_assembly.fasta 
+done
