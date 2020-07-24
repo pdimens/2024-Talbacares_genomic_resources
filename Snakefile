@@ -174,6 +174,6 @@ rule consensus:
         CONTIGS=$(realpath  {input.concat_contigs})
         TMPDIR=$(realpath consensus/tmp)
         cd consensus
-        ../software/dbg2olc/split_and_run_sparc.sh $DBG_CONT $CONT_INF $CONTIGS $TMPDIR 2 > ../{log}
+        ../software/dbg2olc/split_and_run_sparc.sh $DBG_CONT $CONT_INF $CONTIGS $TMPDIR 2 {threads} > ../{log}
         mv tmp/final_assembly.fasta ../{output.consensus} && rm -r tmp
         """
