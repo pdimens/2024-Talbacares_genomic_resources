@@ -34,6 +34,5 @@ for file in $(find ${split_dir} -name "*.reads.fasta"); do
     done
     #remove after use to save space
     rm ${split_dir}/${chunk}.mapped.m5 ${split_dir}/${chunk}.reads.fasta
-    cat ${split_dir}/${chunk}.consensus.fasta >> ${split_dir}/final_assembly.fasta 
-    rm ${split_dir}/${chunk}.consensus.fasta
+    cat ${split_dir}/${chunk}.consensus.fasta >> ${split_dir}/final_assembly.fasta && rm ${split_dir}/${chunk}.consensus.fasta
 done

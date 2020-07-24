@@ -159,7 +159,6 @@ rule consensus:
         concat_contigs = "reads/consensus_concat/{prefix}_contigs.pb.fasta"
     output:
         consensus = "consensus/{prefix}_consensus.fasta",
-        concat_contigs = "consensus/{prefix}_contigs.pb.fasta"
     log: "consensus/{prefix}_consensus.log"
     message:
         """
@@ -174,5 +173,5 @@ rule consensus:
         TMPDIR=$(realpath consensus/tmp)
         cd consensus
         ../software/dbg2olc/split_and_run_sparc.sh $DBG_CONT $CONT_INF $CONTIGS $TMPDIR 2 > ../{log}
-        mv tmp/final_assembly.fasta ../{output.consensus}
+        mv tmp/final_assembly.fasta ../{output.consensus} && rm -r tmp
         """
