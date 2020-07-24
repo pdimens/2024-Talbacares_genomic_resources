@@ -164,6 +164,7 @@ rule consensus:
         """
         Using BLASR + Sparc to perform a consensus
         """
+    threads: 16
     shell:
         """
         mkdir -p consensus/tmp
