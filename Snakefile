@@ -159,7 +159,8 @@ rule consensus:
         concat_contigs = "reads/consensus_concat/{prefix}_contigs.pb.fasta"
     output:
         consensus = "consensus/{prefix}_consensus.fasta",
-    log: "consensus/{prefix}_consensus.log"
+    log: 
+        "consensus/{prefix}_consensus.log"
     message:
         """
         Using BLASR + Sparc to perform a consensus
