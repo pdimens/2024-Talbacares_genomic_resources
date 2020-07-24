@@ -1,5 +1,5 @@
 rule all:
-    input: "consensus/YFT_consensus.fasta"
+    input: "purge_haplotigs/first/YFT_to_consensus.bam"
 
 
 rule trim_short:
@@ -176,4 +176,33 @@ rule consensus:
         cd consensus
         ../software/dbg2olc/split_and_run_sparc.sh $DBG_CONT $CONT_INF $CONTIGS $TMPDIR 2 {threads} > ../{log}
         mv tmp/final_assembly.fasta ../{output.consensus} && rm -r tmp
+        """
+
+rule map_for_purge:
+    input:
+        in1 = "reads/short_trimmed/{prefix}.illumina.R1.fq",
+        in2 = "reads/short_trimmed/{prefix}.illumina.R2.fq",
+        consensus = "consensus/{prefix}_consensus.fasta"
+    output: 
+        mapfile= "purge_haplotigs/first/{prefix}_to_consensus.bam"
+    params: 
+        samfile = "purge_haplotigs/first/{prefix}_to_consensus.sam"
+    message: "Mapping short reads onto the consensus genome"
+    threads: 16
+    shell:
+        """
+        software/bwa-mem2/bwa-mem2 mem -t {threads} {input.consensus} {input.in1} {input.in2} > {params.samfile}
+        software/bwa-mem2/sam2bam {params.samfile} {threads}
+        """
+
+rule initial_purge_haplotigs:
+    input:
+        consensus = "consensus/{prefix}_consensus.fasta",
+        mapfile= "purge_haplotigs/first/{prefix}_to_consensus.bam"
+    output:
+    message: "Purging haplotigs"
+    threads: 16
+    shell:
+        """
+        purge_haplotigs  hist  -b {input.mapfile}  -g {input.consensus}  -t {threads}
         """
