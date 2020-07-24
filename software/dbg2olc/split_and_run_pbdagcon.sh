@@ -11,7 +11,8 @@ THREADS=$5
 
 mkdir -p $split_dir
 
-python2 $(realpath ../software/dbg2olc/split_reads_by_backbone_openclose.py) -b ${backbone_fasta} -o ${split_dir} -r ${reads_fasta} -c ${consensus_fasta} 
+SPLITREADS=$(realpath ../software/dbg2olc/split_reads_by_backbone_openclose.py)
+python2 $SPLITREADS -b ${backbone_fasta} -o ${split_dir} -r ${reads_fasta} -c ${consensus_fasta} 
 
 for file in $(find ${split_dir} -name "*.reads.fasta"); do
     chunk=`basename $file .reads.fasta`
