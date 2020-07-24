@@ -191,6 +191,7 @@ rule map_for_purge:
     threads: 16
     shell:
         """
+        software/bwa-mem2/bwa-mem2 index {input.consensus}
         software/bwa-mem2/bwa-mem2 mem -t {threads} {input.consensus} {input.in1} {input.in2} > {params.samfile}
         software/bwa-mem2/sam2bam {params.samfile} {threads}
         """
