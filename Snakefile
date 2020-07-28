@@ -184,7 +184,8 @@ rule map_for_purge:
         in2 = "reads/short_trimmed/{prefix}.illumina.R2.fq",
         consensus = "consensus/{prefix}_consensus.fasta"
     output: 
-        mapfile= "purge_haplotigs/first/{prefix}_to_consensus.bam"
+        mapfile= "purge_haplotigs/first/{prefix}_to_consensus.bam",
+        mapindex= "purge_haplotigs/first/{prefix}_to_consensus.bam.bai"
     params: 
         samfile = "purge_haplotigs/first/{prefix}_to_consensus.sam"
     message: "Mapping short reads onto the consensus genome"
