@@ -15,10 +15,10 @@ fi
 FILENAME=`echo "$1" | cut -d '.' -f1`
 
 # convert SAM to BAM
-samtools view -hb $1 -@$THREADS > $FILENAME.tmp.bam
+samtools view -hb $1 -@$THREADS > $FILENAME.tmp.bam && rm $1
 
 # sort the BAM
-samtools view -h -F4 $FILENAME.bam -@$THREADS | samtools sort -m 16G -l0  -@$THREADS> $FILENAME.bam && rm $FILENAME.tmp.bam
+samtools view -h -F4 $FILENAME.tmp.bam -@$THREADS | samtools sort -m 16G -l0  -@$THREADS> $FILENAME.bam && rm $FILENAME.tmp.bam
 
 # index sorted BAM
 samtools index $FILENAME.bam -@$THREADS
