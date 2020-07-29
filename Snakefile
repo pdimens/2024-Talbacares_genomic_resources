@@ -184,8 +184,8 @@ rule map_for_purge:
         in2 = "reads/short_trimmed/{prefix}.illumina.R2.fq",
         consensus = "consensus/{prefix}_consensus.fasta"
     output: 
-        mapfile= "purge_haplotigs/first/{prefix}_to_consensus.bam",
-        mapindex= "purge_haplotigs/first/{prefix}_to_consensus.bam.bai"
+        mapfile = "purge_haplotigs/first/{prefix}_to_consensus.bam",
+        mapindex = "purge_haplotigs/first/{prefix}_to_consensus.bam.bai"
     params: 
         samfile = "purge_haplotigs/first/{prefix}_to_consensus.sam"
     message: "Mapping short reads onto the consensus genome"
@@ -197,14 +197,24 @@ rule map_for_purge:
         software/bwa-mem2/sam2bam {params.samfile} {threads}
         """
 
-rule initial_purge_haplotigs:
+rule purge_haplotigs_I_hist:
     input:
         consensus = "consensus/{prefix}_consensus.fasta",
-        mapfile= "purge_haplotigs/first/{prefix}_to_consensus.bam"
+        mapfile = "purge_haplotigs/first/{prefix}_to_consensus.bam"
     output:
+        histo = "{prefix}to_consensus.bam.gencov",
+        hist_image = "{prefix}_to_consensus.bam.histogram.png"
     message: "Purging haplotigs"
     threads: 16
     shell:
         """
-        purge_haplotigs  hist  -b {input.mapfile}  -g {input.consensus}  -t {threads}
+        purge_haplotigs  hist  -b {input.mapfile}  -g {input.consensus}  -t {threads} -d 400
         """
+
+rule purge_haplotigs_I:
+    input:
+        mapfile = "purge_haplotigs/first/{prefix}_to_consensus.bam",
+        consensus = "consensus/{prefix}_consensus.fasta"
+    output:
+
+    message: "Purging haplotigs from consensus genome"
