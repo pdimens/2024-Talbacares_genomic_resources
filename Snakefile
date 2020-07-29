@@ -214,10 +214,38 @@ rule purge_haplotigs_I_hist:
         purge_haplotigs hist -b ../../{input.mapfile} -g ../../{input.consensus} -t {threads} {params.depth}
         """
 
+rule purge_haplotigs_suspects_I:
+    input:
+        hist_cov = "purge_haplotigs/first/{prefix}_to_consensus.bam.gencov"  
+    output:
+        cov_out = "purge_haplotigs/first/{prefix}_coverage_stats.csv"
+    params:
+        low = "-low 192",
+        mid = "-mid 352",
+        high = "-high 448"
+    message: "Finding suspect contigs"
+    shell:
+        """
+        purge_haplotigs cov -i {input} {params} -o {output} 
+        """
+
 rule purge_haplotigs_I:
     input:
+        consensus = "consensus/{prefix}_consensus.fasta",
         mapfile = "purge_haplotigs/first/{prefix}_to_consensus.bam",
-        consensus = "consensus/{prefix}_consensus.fasta"
+        suspects = "purge_haplotigs/first/{prefix}_coverage_stats.csv"
     output:
-
-    message: "Purging haplotigs from consensus genome"
+        curated = "purge_haplotigs/first/{prefix}_purge_I.fasta"
+    log:
+        haplotigs = "purge_haplotigs/first/{prefix}_purge_I.haplotigs.fasta",
+        artefacts = "purge_haplotigs/first/{prefix}_purge_I.artefacts.fasta",
+        reassignments = "purge_haplotigs/first/{prefix}_purge_I.reassignments.tsv",
+        logs = "purge_haplotigs/first/{prefix}_purge_I.contig_associations.log"
+    threads: 16
+    message: "Purging haplotigs"
+    params:
+        prefix = "-o {prefix}_purge_I"
+    shell:
+        """
+            purge_haplotigs purge {params} -g {input.consensus} -c {input.suspects} -d -b {input.mapfile}
+        """    
