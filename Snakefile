@@ -261,12 +261,12 @@ rule map_for_MEC:
         mapindex = "misassembly/{prefix}_to_purgeI.bam.bai"
     params: 
         samfile = "misassembly/{prefix}_to_purgeI.sam"
-    message: "Mapping short reads onto the consensus genome"
+    message: "Mapping short reads onto the purged genome for misassembly removal"
     threads: 16
     shell:
         """
         software/bwa-mem2/bwa-mem2 index {input.consensus}
-        software/bwa-mem2/bwa-mem2 mem -t {threads} {input.consensus} {input.in1} {input.in2} > {params.samfile}
+        software/bwa-mem2/bwa-mem2 mem -t {threads} {input.purged_asm} {input.in1} {input.in2} > {params.samfile}
         software/bwa-mem2/sam2bam {params.samfile} {threads}
         #software/BamQC/bin/bamqc {output.mapfile} -t {threads} -q -o misassembly
         """
