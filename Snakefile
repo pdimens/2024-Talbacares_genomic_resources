@@ -1,5 +1,5 @@
 rule all:
-    input: "purge_haplotigs/first/YFT_purge_I.fasta"
+    input: "misassembly/YFT_to_purgeI.bam"
 
 
 rule trim_short:
