@@ -207,7 +207,7 @@ rule purge_haplotigs_I_hist:
     message: "Generating coverage histogram for purging"
     threads: 16
     params:
-        depth = "-d 800"
+        depth = "-d 620"
     shell:
         """
         cd purge_haplotigs/first/
