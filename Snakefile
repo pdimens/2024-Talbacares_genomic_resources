@@ -248,5 +248,5 @@ rule purge_haplotigs_I:
     shell:
         """
             cd purge_haplotigs/first
-            purge_haplotigs purge {params} -g ../../{input.consensus} -c ../../{input.suspects} -d -b ../../{input.mapfile}
+            purge_haplotigs purge {params} -t {threads} -g ../../{input.consensus} -c ../../{input.suspects} -d -b ../../{input.mapfile}
         """    
