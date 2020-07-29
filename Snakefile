@@ -202,15 +202,16 @@ rule purge_haplotigs_I_hist:
         consensus = "consensus/{prefix}_consensus.fasta",
         mapfile = "purge_haplotigs/first/{prefix}_to_consensus.bam"
     output:
-        histo = "purge_haplotigs/first/{prefix}to_consensus.bam.gencov",
+        histo = "purge_haplotigs/first/{prefix}_to_consensus.bam.gencov",
         hist_image = "purge_haplotigs/first/{prefix}_to_consensus.bam.histogram.png"
-    message: "Purging haplotigs"
+    message: "Generating coverage histogram for purging"
     threads: 16
     params:
         depth = "-d 400"
     shell:
         """
-        purge_haplotigs hist -b {input.mapfile} -g {input.consensus} -t {threads} {params.depth}
+        cd purge_haplotigs/first/
+        purge_haplotigs hist -b ../../{input.mapfile} -g ../../{input.consensus} -t {threads} {params.depth}
         """
 
 rule purge_haplotigs_I:
