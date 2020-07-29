@@ -247,6 +247,26 @@ rule purge_haplotigs_I:
         prefix = "-o {prefix}_purge_I"
     shell:
         """
-            cd purge_haplotigs/first
-            purge_haplotigs purge {params} -t {threads} -g ../../{input.consensus} -c ../../{input.suspects} -d -b ../../{input.mapfile}
-        """    
+        cd purge_haplotigs/first
+        purge_haplotigs purge {params} -t {threads} -g ../../{input.consensus} -c ../../{input.suspects} -d -b ../../{input.mapfile}
+        """
+
+rule map_for_MEC:
+    input:
+        in1 = "reads/short_trimmed/{prefix}.illumina.R1.fq",
+        in2 = "reads/short_trimmed/{prefix}.illumina.R2.fq",
+        purged_asm = "purge_haplotigs/first/{prefix}_purge_I.fasta"
+    output: 
+        mapfile = "misassembly/{prefix}_to_purgeI.bam",
+        mapindex = "misassembly/{prefix}_to_purgeI.bam.bai"
+    params: 
+        samfile = "misassembly/{prefix}_to_purgeI.sam"
+    message: "Mapping short reads onto the consensus genome"
+    threads: 16
+    shell:
+        """
+        software/bwa-mem2/bwa-mem2 index {input.consensus}
+        software/bwa-mem2/bwa-mem2 mem -t {threads} {input.consensus} {input.in1} {input.in2} > {params.samfile}
+        software/bwa-mem2/sam2bam {params.samfile} {threads}
+        #software/BamQC/bin/bamqc {output.mapfile} -t {threads} -q -o misassembly
+        """
