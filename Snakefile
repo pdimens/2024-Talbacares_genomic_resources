@@ -1,5 +1,5 @@
 rule all:
-    input: "purge_haplotigs/first/YFT_to_consensus.bam.histogram.png"
+    input: "purge_haplotigs/first/YFT_purge_I.fasta"
 
 
 rule trim_short:
