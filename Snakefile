@@ -1,5 +1,5 @@
 rule all:
-    input: "purge_haplotigs/first/YFT_to_consensus.bam"
+    input: "purge_haplotigs/first/YFT_to_consensus.bam.histogram.png"
 
 
 rule trim_short:
@@ -202,13 +202,15 @@ rule purge_haplotigs_I_hist:
         consensus = "consensus/{prefix}_consensus.fasta",
         mapfile = "purge_haplotigs/first/{prefix}_to_consensus.bam"
     output:
-        histo = "{prefix}to_consensus.bam.gencov",
-        hist_image = "{prefix}_to_consensus.bam.histogram.png"
+        histo = "purge_haplotigs/first/{prefix}to_consensus.bam.gencov",
+        hist_image = "purge_haplotigs/first/{prefix}_to_consensus.bam.histogram.png"
     message: "Purging haplotigs"
     threads: 16
+    params:
+        depth = "-d 400"
     shell:
         """
-        purge_haplotigs  hist  -b {input.mapfile}  -g {input.consensus}  -t {threads} -d 400
+        purge_haplotigs hist -b {input.mapfile} -g {input.consensus} -t {threads} {params.depth}
         """
 
 rule purge_haplotigs_I:
