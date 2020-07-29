@@ -247,5 +247,6 @@ rule purge_haplotigs_I:
         prefix = "-o {prefix}_purge_I"
     shell:
         """
-            purge_haplotigs purge {params} -g {input.consensus} -c {input.suspects} -d -b {input.mapfile}
+            cd purge_haplotigs/first
+            purge_haplotigs purge {params} -g ../../{input.consensus} -c ../../{input.suspects} -d -b ../../{input.mapfile}
         """    
