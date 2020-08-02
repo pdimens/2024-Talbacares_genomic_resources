@@ -266,7 +266,7 @@ rule map_for_MEC:
     shell:
         """
         software/bwa-mem2/bwa-mem2 index {input.purged_asm}
-        software/bwa-mem2/bwa-mem2 mem -t {threads} {input.purged_asm} {input.in1} {input.in2} | samtools view -hb -F4 -q 2 -@{threads} | samtools sort -m 16G -l0  -@{threads} > {output.mapfile}
+        software/bwa-mem2/bwa-mem2 mem -t {threads} {input.purged_asm} {input.in1} {input.in2}
         #software/bwa-mem2/sam2bam {params.samfile} {threads}
         #software/BamQC/bin/bamqc {output.mapfile} -t {threads} -q -o misassembly
         """
