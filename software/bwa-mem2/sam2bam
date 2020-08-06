@@ -1,25 +1,18 @@
 #! /usr/bin/env bash
 
-if [[ -z "$1" ]]; then
-    echo -e "\n  This script will convert a SAM file into a BAM file. It will also sort and index the file, along with removing unmapped reads. Provide the number of threads as the second argument to run everything multithreaded."
-    echo -e "\n [usage] sam2bam filename.sam threads"
-    exit
-fi
+#This script will convert a SAM file into a BAM file. It will also sort and index the file, along with removing unmapped reads. Provide the number of threads as the second argument to run everything multithreaded."
+#[usage] sam2bam filename.sam threads"
 
-if [[ -z "$2" ]]; then
-    THREADS=1
-else
-    THREADS=$2
-fi
+FILENAME=$(basename $1 .sam)
+THREADS=$2
 
 FILENAME=`echo "$1" | cut -d '.' -f1`
 
 # convert SAM to BAM
-#samtools view -hb $1 -@$THREADS > $FILENAME.tmp.bam && rm $1
-samtools view -hb $1 -@$THREADS | samtools view -h -q 4 -@$THREADS > $FILENAME.tmp.bam && rm $1
+samtools view -hb $1 -@$THREADS > $FILENAME.tmp.bam && rm $1
 
 # sort the BAM
-samtools view -h -F4 $FILENAME.bam -@$THREADS | samtools sort -m 16G -l0  -@$THREADS> $FILENAME.bam && rm $FILENAME.tmp.bam
+samtools view -h -F4 $FILENAME.tmp.bam -@$THREADS | samtools sort -m 16G -l0  -@$THREADS> $FILENAME.bam && rm $FILENAME.tmp.bam
 
 # index sorted BAM
 samtools index $FILENAME.bam -@$THREADS
