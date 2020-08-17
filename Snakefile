@@ -1,5 +1,5 @@
 rule all:
-    input: "misassembly/YFT_to_purgeI.bam"
+    input: "misassembly/YFT.MEC.fasta"
 
 
 rule trim_short:
@@ -266,7 +266,27 @@ rule map_for_MEC:
     shell:
         """
         software/bwa-mem2/bwa-mem2 index {input.purged_asm}
-        software/bwa-mem2/bwa-mem2 mem -t {threads} -v 1 {input.purged_asm} {input.in1} {input.in2}
-        software/bwa-mem2/sam2bam {params.samfile} {threads}
-        #software/BamQC/bin/bamqc {output.mapfile} -t {threads} -q -o misassembly
+	software/bwa-mem2/bwa-mem2 mem -t {threads} -v 1 {input.purged_asm} {input.in1} {input.in2} | samtools view -hb -F4 -q10 -@{threads} | samtools sort -m 16G -l0  -@{threads} > {output.mapfile}	
+	samtools index {output.mapfile} -@{threads}
+        software/BamQC/bin/bamqc {output.mapfile} -t {threads} -q -o misassembly
         """
+
+rule MEC:
+    input:
+	asm = "purge_haplotigs/first/{prefix}_purge_I.fasta",
+	mapfile = "misassembly/{prefix}_to_purgeI.bam"
+    output:
+	asm = "misassembly/{prefix}.MEC.fasta"
+    message:
+	"""
+	Finding and removing misassemblies using MEC
+	"""
+    params:
+	outprefix = "{prefix}",
+	mapqual = "30"
+    shell:
+	"""
+	cd misassembly
+	python2 ../software/MEC/mec.py -i ../{input.asm} -b ../{input.mapfile} -o {params.prefix} -q {params.mapqual}
+	mv {params.outprefix}_correct_assembly.fasta ../{output.asm}
+	"""
