@@ -273,16 +273,16 @@ rule map_for_MEC:
 
 rule MEC:
     input:
-	asm = "purge_haplotigs/first/{prefix}_purge_I.fasta",
-	mapfile = "misassembly/{prefix}_to_purgeI.bam"
+	    asm = "purge_haplotigs/first/{prefix}_purge_I.fasta",
+	    mapfile = "misassembly/{prefix}_to_purgeI.bam"
     output: 
-	asm = "misassembly/{prefix}.MEC.fasta"
+	    asm = "misassembly/{prefix}.MEC.fasta"
     params: 
         samfile = "misassembly/{prefix}_to_purgeI.sam"
     message: "Finding and removing misassemblies using MEC"
     shell:
         """
-	cd misassembly
-	python2 ../software/MEC/mec.py -i ../{input.asm} -b ../{input.mapfile} -o {params.prefix} -q {params.mapqual}
-	mv {params.outprefix}_correct_assembly.fasta ../{output.asm}
+	    cd misassembly
+	    python2 ../software/MEC/src/mec.py -i ../{input.asm} -b ../{input.mapfile} -o {params.prefix} -q {params.mapqual}
+	    mv {params.outprefix}_correct_assembly.fasta ../{output.asm}
         """
