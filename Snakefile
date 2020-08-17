@@ -286,6 +286,6 @@ rule MEC:
         ASM=$(realpath {input.asm})
         MAPFILE=$(realpath {input.mapfile})
 	    cd misassembly
-	    python2 ../software/MEC/src/mec.py -i $ASM -b $MAPFILE -o {params.outprefix} -q {params.mapqual}
+	    python2 ../software/MEC/src/mec.py -i $ASM -bam $MAPFILE -o {params.outprefix} -q {params.mapqual}
 	    mv {params.outprefix}_correct_assembly.fasta ../{output.asm}
         """
