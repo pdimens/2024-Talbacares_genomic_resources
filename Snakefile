@@ -278,14 +278,12 @@ rule MEC:
     output: 
 	    asm = "misassembly/{prefix}.MEC.fasta"
     params: 
-        outprefix = "{prefix}",
         mapqual = 30
     message: "Finding and removing misassemblies using MEC"
     shell:
         """
-        ASM=$(realpath {input.asm})
-        MAPFILE=$(realpath {input.mapfile})
-	    cd misassembly
-	    python2 ../software/MEC/src/mec.py -i $ASM -bam $MAPFILE -o {params.outprefix} -q {params.mapqual}
-	    mv {params.outprefix}_correct_assembly.fasta ../{output.asm}
+        #ASM=$(realpath {input.asm})
+        #MAPFILE=$(realpath {input.mapfile})
+	    #cd misassembly
+	    python2 /software/MEC/src/mec.py -i {input.asm} -bam {input.mapfile} -o {output.asm} -q {params.mapqual}
         """
