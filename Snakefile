@@ -285,5 +285,5 @@ rule MEC:
         #ASM=$(realpath {input.asm})
         #MAPFILE=$(realpath {input.mapfile})
 	    #cd misassembly
-	    python2 /software/MEC/src/mec.py -i {input.asm} -bam {input.mapfile} -o {output.asm} -q {params.mapqual}
+	    python2 software/MEC/src/mec.py -i {input.asm} -bam {input.mapfile} -o {output.asm} -q {params.mapqual}
         """
