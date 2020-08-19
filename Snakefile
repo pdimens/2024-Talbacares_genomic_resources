@@ -339,22 +339,22 @@ rule purge_haplotigs_suspects_II:
 
 rule purge_haplotigs_II:
     input:
-        consensus = "consensus/{prefix}_consensus.fasta",
-        mapfile = "purge_haplotigs/first/{prefix}_to_consensus.bam",
-        suspects = "purge_haplotigs/first/{prefix}_coverage_stats.csv"
+        consensus = "consensus/{prefix}_MEC.fasta",
+        mapfile = "purge_haplotigs/second/{prefix}_to_MEC.bam",
+        suspects = "purge_haplotigs/second/{prefix}_coverage_stats.csv"
     output:
-        curated = "purge_haplotigs/first/{prefix}_purge_I.fasta"
+        curated = "purge_haplotigs/second/{prefix}_purge_II.fasta"
     log:
-        haplotigs = "purge_haplotigs/first/{prefix}_purge_I.haplotigs.fasta",
-        artefacts = "purge_haplotigs/first/{prefix}_purge_I.artefacts.fasta",
-        reassignments = "purge_haplotigs/first/{prefix}_purge_I.reassignments.tsv",
-        logs = "purge_haplotigs/first/{prefix}_purge_I.contig_associations.log"
+        haplotigs = "purge_haplotigs/second/{prefix}_purge_II.haplotigs.fasta",
+        artefacts = "purge_haplotigs/second/{prefix}_purge_II.artefacts.fasta",
+        reassignments = "purge_haplotigs/second/{prefix}_purge_II.reassignments.tsv",
+        logs = "purge_haplotigs/second/{prefix}_purge_II.contig_associations.log"
     threads: 16
     message: "Purging haplotigs"
     params:
-        prefix = "-o {prefix}_purge_I"
+        prefix = "-o {prefix}_purge_II"
     shell:
         """
-        cd purge_haplotigs/first
+        cd purge_haplotigs/second
         purge_haplotigs purge {params} -t {threads} -g ../../{input.consensus} -c ../../{input.suspects} -d -b ../../{input.mapfile}
         """
