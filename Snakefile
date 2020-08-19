@@ -1,5 +1,5 @@
 rule all:
-    input: "purge_haplotigs/second/YFT_to_MEC.bam.gencov"
+    input: "purge_haplotigs/second/{prefix}_purge_II.fasta"
 
 
 rule trim_short:
@@ -337,7 +337,7 @@ rule purge_haplotigs_suspects_II:
 
 rule purge_haplotigs_II:
     input:
-        asm = "consensus/{prefix}_MEC.fasta",
+        asm = "misassembly/{prefix}.MEC.fasta",
         mapfile = "purge_haplotigs/second/{prefix}_to_MEC.bam",
         suspects = "purge_haplotigs/second/{prefix}_coverage_stats.csv"
     output:
