@@ -297,7 +297,7 @@ rule map_for_purge_II:
     threads: 16
     shell:
         """
-        software/bwa-mem2/bwa-mem2 index {input.consensus}
+        software/bwa-mem2/bwa-mem2 index {input.asm}
         software/bwa-mem2/bwa-mem2 mem -t {threads} {input.asm} {input.in1} {input.in2} | samtools view -hb -F4 -q10 -@{threads} | samtools sort -m 16G -l0  -@{threads} > {output.mapfile}	
         samtools index {output.mapfile} -@{threads}
         """
@@ -339,7 +339,7 @@ rule purge_haplotigs_suspects_II:
 
 rule purge_haplotigs_II:
     input:
-        consensus = "consensus/{prefix}_MEC.fasta",
+        asm = "consensus/{prefix}_MEC.fasta",
         mapfile = "purge_haplotigs/second/{prefix}_to_MEC.bam",
         suspects = "purge_haplotigs/second/{prefix}_coverage_stats.csv"
     output:
@@ -356,5 +356,5 @@ rule purge_haplotigs_II:
     shell:
         """
         cd purge_haplotigs/second
-        purge_haplotigs purge {params} -t {threads} -g ../../{input.consensus} -c ../../{input.suspects} -d -b ../../{input.mapfile}
+        purge_haplotigs purge {params} -t {threads} -g ../../{input.asm} -c ../../{input.suspects} -d -b ../../{input.mapfile}
         """
