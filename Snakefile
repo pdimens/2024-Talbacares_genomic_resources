@@ -1,5 +1,5 @@
 rule all:
-    input: "misassembly/YFT.MEC.fasta"
+    input: "purge_haplotigs/second/YFT_to_MEC.bam.gencov"
 
 
 rule trim_short:
@@ -282,8 +282,79 @@ rule MEC:
     message: "Finding and removing misassemblies using MEC"
     shell:
         """
-        #ASM=$(realpath {input.asm})
-        #MAPFILE=$(realpath {input.mapfile})
-	    #cd misassembly
 	    python2 software/MEC/src/mec.py -i {input.asm} -bam {input.mapfile} -o {output.asm} -q {params.mapqual}
+        """
+
+rule map_for_purge_II:
+    input:
+        in1 = "reads/short_trimmed/{prefix}.illumina.R1.fq",
+        in2 = "reads/short_trimmed/{prefix}.illumina.R2.fq",
+        asm = "misassembly/{prefix}.MEC.fasta"
+    output: 
+        mapfile = "purge_haplotigs/second/{prefix}_to_MEC.bam",
+        mapindex = "purge_haplotigs/second/{prefix}_to_MEC.bam.bai"
+    message: "Mapping short reads onto the misassembly-filtered genome"
+    threads: 16
+    shell:
+        """
+        software/bwa-mem2/bwa-mem2 index {input.consensus}
+        software/bwa-mem2/bwa-mem2 mem -t {threads} {input.asm} {input.in1} {input.in2} | samtools view -hb -F4 -q10 -@{threads} | samtools sort -m 16G -l0  -@{threads} > {output.mapfile}	
+        samtools index {output.mapfile} -@{threads}
+        """
+
+
+rule purge_haplotigs_II_hist:
+    input:
+        asm = "misassembly/{prefix}.MEC.fasta",
+        mapfile = "purge_haplotigs/second/{prefix}_to_MEC.bam"
+    output:
+        histo = "purge_haplotigs/second/{prefix}_to_MEC.bam.gencov"
+    log:
+        hist_image = "purge_haplotigs/second/{prefix}_to_MEC.bam.histogram.png"
+    message: "Generating coverage histogram for purging"
+    threads: 16
+    params:
+        depth = "-d 620"
+    shell:
+        """
+        cd purge_haplotigs/second/
+        purge_haplotigs hist -b ../../{input.mapfile} -g ../../{input.asm} -t {threads} {params.depth}
+        """
+
+#### STOP HERE #####
+rule purge_haplotigs_suspects_II:
+    input:
+        hist_cov = "purge_haplotigs/second/{prefix}_to_MEC.bam.gencov"  
+    output:
+        cov_out = "purge_haplotigs/second/{prefix}_coverage_stats.csv"
+    params:
+        low = "-low 192",
+        mid = "-mid 352",
+        high = "-high 448"
+    message: "Finding suspect contigs"
+    shell:
+        """
+        purge_haplotigs cov -i {input} {params} -o {output} 
+        """
+
+rule purge_haplotigs_II:
+    input:
+        consensus = "consensus/{prefix}_consensus.fasta",
+        mapfile = "purge_haplotigs/first/{prefix}_to_consensus.bam",
+        suspects = "purge_haplotigs/first/{prefix}_coverage_stats.csv"
+    output:
+        curated = "purge_haplotigs/first/{prefix}_purge_I.fasta"
+    log:
+        haplotigs = "purge_haplotigs/first/{prefix}_purge_I.haplotigs.fasta",
+        artefacts = "purge_haplotigs/first/{prefix}_purge_I.artefacts.fasta",
+        reassignments = "purge_haplotigs/first/{prefix}_purge_I.reassignments.tsv",
+        logs = "purge_haplotigs/first/{prefix}_purge_I.contig_associations.log"
+    threads: 16
+    message: "Purging haplotigs"
+    params:
+        prefix = "-o {prefix}_purge_I"
+    shell:
+        """
+        cd purge_haplotigs/first
+        purge_haplotigs purge {params} -t {threads} -g ../../{input.consensus} -c ../../{input.suspects} -d -b ../../{input.mapfile}
         """
