@@ -1,5 +1,5 @@
 rule all:
-    input: "purge_haplotigs/second/{prefix}_purge_II.fasta"
+    input: "purge_haplotigs/second/YFT_purge_II.fasta"
 
 
 rule trim_short:
