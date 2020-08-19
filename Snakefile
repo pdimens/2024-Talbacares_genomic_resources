@@ -186,15 +186,13 @@ rule map_for_purge:
     output: 
         mapfile = "purge_haplotigs/first/{prefix}_to_consensus.bam",
         mapindex = "purge_haplotigs/first/{prefix}_to_consensus.bam.bai"
-    params: 
-        samfile = "purge_haplotigs/first/{prefix}_to_consensus.sam"
     message: "Mapping short reads onto the consensus genome"
     threads: 16
     shell:
         """
         software/bwa-mem2/bwa-mem2 index {input.consensus}
-        software/bwa-mem2/bwa-mem2 mem -t {threads} {input.consensus} {input.in1} {input.in2} > {params.samfile}
-        software/bwa-mem2/sam2bam {params.samfile} {threads}
+        software/bwa-mem2/bwa-mem2 mem -t {threads} {input.consensus} {input.in1} {input.in2} | samtools view -hb -F4 -q10 -@{threads} | samtools sort -m 16G -l0  -@{threads} > {output.mapfile}	
+        samtools index {output.mapfile} -@{threads}
         """
 
 rule purge_haplotigs_I_hist:
