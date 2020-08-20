@@ -1,5 +1,5 @@
 rule all:
-    input: "purge_haplotigs/second/YFT_purge_II.fasta"
+    input: "polish/YFT.genome.fasta"
 
 
 rule trim_short:
@@ -355,4 +355,37 @@ rule purge_haplotigs_II:
         """
         cd purge_haplotigs/second
         purge_haplotigs purge {params} -t {threads} -g ../../{input.asm} -c ../../{input.suspects} -d -b ../../{input.mapfile}
+        """
+
+rule map_final_polish:
+    input:
+        in1 = "reads/short_trimmed/{prefix}.illumina.R1.fq",
+        in2 = "reads/short_trimmed/{prefix}.illumina.R2.fq",
+        asm = "purge_haplotigs/second/{prefix}_purge_II.fasta"
+    output:
+        mapfile = "polish/{prefix}_to_purgeII.bam",
+        mapindex = "polish/{prefix}_to_purgeII.bam.bai"
+    message: "Mapping short reads onto the double-purged genome"
+    threads: 16
+    shell:
+        """
+        software/bwa-mem2/bwa-mem2 index {input.asm}
+        software/bwa-mem2/bwa-mem2 mem -t {threads} {input.asm} {input.in1} {input.in2} | samtools view -hb -F4 -q10 -@{threads} | samtools sort -m 16G -l0  -@{threads} > {output.mapfile}	
+        samtools index {output.mapfile} -@{threads}
+        """
+
+rule final_polish:
+    input:
+        asm = "purge_haplotigs/second/{prefix}_purge_II.fasta",
+        mapfile = "polish/{prefix}_to_purgeII.bam"
+    output:
+        asm = "polish/{prefix}.genome.fasta"
+    message: "Polishing with Pilon"
+    threads: 16
+    params:
+        out = "--output {prefix}.genome",
+        outdir = "--outdir polish"
+    shell:
+        """
+        pilon --genome {input.asm} --frags {input.mapfile} --changes --diploid {params.out} {params.outdir}
         """
