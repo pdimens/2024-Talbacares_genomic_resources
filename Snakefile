@@ -388,4 +388,6 @@ rule final_polish:
     shell:
         """
         pilon --genome {input.asm} --frags {input.mapfile} --changes --diploid {params.out} {params.outdir}
+        # rename contigs
+        sed -i 's/Backbone/Talbacares/g' {output.asm} && sed -i 's/_pilon//g' {output.asm}
         """
