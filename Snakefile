@@ -1,5 +1,13 @@
 rule all:
-    input: "polish/YFT.genome.fasta"
+    input: 
+        asm = "polish/YFT.genome.fasta",
+        mapfile = "genome_report/YFT_genome.bam"
+    message: "Generating report of final assembly "
+    threads: 16
+    shell:
+    """
+    python software/quast/quast.py --ref-bam {input.mapfile} --eukaryote --large --rna-finding --conserved-genes-finding -o polish -r {input} --threads {threads} {input}
+    """
 
 
 rule trim_short:
@@ -390,4 +398,21 @@ rule final_polish:
         pilon --genome {input.asm} --frags {input.mapfile} --changes --diploid {params.out} {params.outdir}
         # rename contigs
         sed -i 's/Backbone/Talbacares/g' {output.asm} && sed -i 's/_pilon//g' {output.asm}
+        """
+
+rule map_for_report:
+    input:
+        in1 = "reads/short_trimmed/{prefix}.illumina.R1.fq",
+        in2 = "reads/short_trimmed/{prefix}.illumina.R2.fq",
+        asm = "polish/{prefix}.genome.fasta"
+    output:
+        mapfile = "genome_report/{prefix}_genome.bam",
+        mapindex = "genome_report/{prefix}_genome.bam.bai"
+    message: "Mapping short reads onto the final assembly"
+    threads: 16
+    shell:
+        """
+        software/bwa-mem2/bwa-mem2 index {input.asm}
+        software/bwa-mem2/bwa-mem2 mem -t {threads} {input.asm} {input.in1} {input.in2} | samtools view -hb -F4 -q10 -@{threads} | samtools sort -m 16G -l0  -@{threads} > {output.mapfile}	
+        samtools index {output.mapfile} -@{threads}
         """
