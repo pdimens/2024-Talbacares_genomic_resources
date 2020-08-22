@@ -4,10 +4,7 @@ rule all:
         mapfile = "genome_report/YFT_genome.bam"
     message: "Generating report of final assembly "
     threads: 16
-    shell:
-    """
-    python software/quast/quast.py --ref-bam {input.mapfile} --eukaryote --large --rna-finding --conserved-genes-finding -o polish -r {input} --threads {threads} {input}
-    """
+    shell: "python software/quast/quast.py --ref-bam {input.mapfile} --eukaryote --large --rna-finding --conserved-genes-finding -o polish -r {input} --threads {threads} {input}"
 
 
 rule trim_short:
