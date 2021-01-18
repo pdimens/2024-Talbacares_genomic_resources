@@ -1,11 +1,11 @@
 rule all:
-    input: 
-        asm = "polish/YFT.genome.fasta",
-        mapfile = "genome_report/YFT_genome.bam"
+    input: "consensus/YFT_consensus.fasta"
     message: "Generating report of final assembly "
     threads: 16
-    shell: "python software/quast/quast.py --ref-bam {input.mapfile} --eukaryote --large --rna-finding --conserved-genes-finding -o polish -r {input} --threads {threads} {input}"
+    #shell: "python software/quast/quast.py --ref-bam {input.mapfile} --eukaryote --large --rna-finding --conserved-genes-finding -o polish -r {input} --threads {threads} {input}"
 
+#asm = "polish/YFT.genome.fasta",
+#mapfile = "genome_report/YFT_genome.bam",
 
 rule trim_short:
     input:
@@ -26,9 +26,9 @@ rule trim_short:
     params:
         cut_type = "--cut_front --cut_tail", 
         cut_window = "--cut_window_size 5",
-        cut_qual = "--cut_mean_quality 15",
+        cut_qual = "--cut_mean_quality 20",
         adapters = "--detect_adapter_for_pe",
-        length_req = "--length_required 100",
+        length_req = "--length_required 50",
         q = "-q 15",
         u = "-u 50",
         correction = "--correction"
@@ -37,80 +37,29 @@ rule trim_short:
         fastp --thread {threads} --in1 {input.F} --in2 {input.R} --out1 {output.F} --out2 {output.R} -h {log.html} -j {log.json} {params} &> {log.txt}
         """
 
-
-rule kmergenie_short:
-    input:
-        F = "reads/short_trimmed/{short}.illumina.R1.fq",
-        R = "reads/short_trimmed/{short}.illumina.R2.fq"
-    output:
-        best_k = "kmergenie/short/{short}.best.k"
-    log:
-        k_report = "kmergenie/short/{short}_report.html"
-    params:
-        kmin = "-l 20",
-        kmax = "-k 120",
-        out_prefix = "-o {short}"
-    threads: 16
-    message:
-        """
-        Finding optimal Kmers for short reads with Kmergenie
-        """
-    shell:
-        """
-        mkdir -p kmergenie/short/ && cd kmergenie/short
-        echo -e "../../{input.F}\n../../{input.R}" > shortreads.txt
-        ../../software/kmergenie-1.7051/kmergenie shortreads.txt -t {threads} {params} > ../../{output.best_k}
-        """
-
-
-rule kmergenie_long:
-    input:
-        long_reads = "reads/long/{long}.pb.fasta",
-        #short_contigs = "sparseassembler/{long}_contigs.txt"
-    output:
-        best_k = "kmergenie/long/{long}.best.k"
-    log:
-        k_report = "kmergenie/long/{long}_report.html"
-    params:
-        kmin = "-l 20",
-        kmax = "-k 200",
-        out_prefix = "-o {long}"
-    threads: 16  
-    message:
-        """
-        Finding optimal Kmers for long reads + sparseassembler contigs with Kmergenie
-        """
-    shell:
-        """
-        mkdir -p kmergenie/long/ && cd kmergenie/long/
-        echo -e "../../{input.long_reads}" > ../../kmergenie/long/longreads.txt
-        ../../software/kmergenie-1.7051/kmergenie longreads.txt -t {threads} {params} > ../../{output.best_k}
-        """
-
 rule sparseassembler:
     input:
         in1 = "reads/short_trimmed/{short}.illumina.R1.fq",
         in2 = "reads/short_trimmed/{short}.illumina.R2.fq",
-        kmer = "kmergenie/short/{short}.best.k"
     output:
         contigs = "sparseassembler/{short}_contigs.txt"
     params:
         genome_size = "GS 2000000000",
-        #node_thresh = "NodeCovTh 2",
+        node_thresh = "NodeCovTh 2",
         edge_thresh = "EdgeCovTh 1",
         g_thresh = "g 15",
-        ld_val = "LD 0"
+	k = "k 51",
+	chims = "ChimeraTh 2",
+	chims_thresh = "ContigTh 2"
     message:
         """
-        Assembling short reads with Kmergenie-derived K
+        Assembling short reads with {params.k}
         """
     shell:
         """
-        KMER=$(grep "^best k:" {input.kmer} | grep -o '[^ ]*$')
-        KCOV=$(grep "for best k:" {input.kmer} | grep -o '[^ ]*$')
         mkdir -p sparseassembler
         cd sparseassembler
-        SparseAssembler k $KMER NodeCovTh $KCOV i1 ../{input.in1} i2 ../{input.in2} {params}
+        SparseAssembler i1 ../{input.in1} i2 ../{input.in2} {params}
         mv Contigs.txt ../{output}
         """
 
@@ -119,7 +68,6 @@ rule dbg2olc:
     input:
         sparse = "sparseassembler/{prefix}_contigs.txt",
         longreads = "reads/long/{prefix}.pb.fasta",
-        kmer = "kmergenie/long/{prefix}.best.k"
     output:
         contigs = "dbg2olc/{prefix}_backbone_raw.fasta",
         contig_info = "dbg2olc/{prefix}_consensus_info.txt"
@@ -129,17 +77,15 @@ rule dbg2olc:
         """
     params:
         ld_val = "LD 0",
-        kmer = "k 31",
+        kmer = "k 17",
         k_coverage = "KmerCovTh 2",
-        adaptive_theta = "AdaptiveTh 0.01",
-        min_overlap = "MinOverlap 50",
+        adaptive_theta = "AdaptiveTh 0.001",
+        min_overlap = "MinOverlap 15",
         rm_chimera = "RemoveChimera 1"
     shell:
         """
         mkdir -p dbg2olc
         cd dbg2olc
-        #KMER=$(grep "^best k:" ../{input.kmer} | grep -o '[^ ]*$')
-        #KCOV=$(grep "for best k:" ../{input.kmer} | grep -o '[^ ]*$')
         DBG2OLC Contigs ../{input.sparse} f ../{input.longreads} {params} > dbg.log
         mv backbone_raw.fasta ../{output.contigs}
         mv DBG2OLC_Consensus_info.txt ../{output.contig_info}
@@ -168,7 +114,7 @@ rule consensus:
         "consensus/{prefix}_consensus.log"
     message:
         """
-        Using BLASR + Sparc to perform a consensus
+        Using BLASR + pbdagcon to perform a consensus
         """
     threads: 16
     shell:
@@ -179,7 +125,7 @@ rule consensus:
         CONTIGS=$(realpath  {input.concat_contigs})
         TMPDIR=$(realpath consensus/tmp)
         cd consensus
-        ../software/dbg2olc/split_and_run_sparc.sh $DBG_CONT $CONT_INF $CONTIGS $TMPDIR 2 {threads} > ../{log}
+        ../software/dbg2olc/split_and_run_pbdagcon.sh $DBG_CONT $CONT_INF $CONTIGS $TMPDIR 2 {threads} > ../{log}
         mv tmp/final_assembly.fasta ../{output.consensus} && rm -r tmp
         """
 
