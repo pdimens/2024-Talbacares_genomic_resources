@@ -1,5 +1,5 @@
 rule all:
-    input: "consensus/YFT_consensus.fasta"
+    input: "purge_haplotigs/first/{prefix}_to_assembly.bam.gencov"
     message: "Generating report of final assembly "
     threads: 16
     #shell: "python software/quast/quast.py --ref-bam {input.mapfile} --eukaryote --large --rna-finding --conserved-genes-finding -o polish -r {input} --threads {threads} {input}"
@@ -129,15 +129,50 @@ rule consensus:
         mv tmp/final_assembly.fasta ../{output.consensus} && rm -r tmp
         """
 
-rule map_for_purge:
+rule map_for_initial_polish:
     input:
         in1 = "reads/short_trimmed/{prefix}.illumina.R1.fq",
         in2 = "reads/short_trimmed/{prefix}.illumina.R2.fq",
         consensus = "consensus/{prefix}_consensus.fasta"
     output: 
-        mapfile = "purge_haplotigs/first/{prefix}_to_consensus.bam",
-        mapindex = "purge_haplotigs/first/{prefix}_to_consensus.bam.bai"
-    message: "Mapping short reads onto the consensus genome"
+        mapfile = "init_polish/{prefix}_to_consensus.bam",
+        mapindex = "init_polish/{prefix}_to_consensus.bam.bai"
+    message: "Mapping short reads onto the consensus genome for first round of pilon polishing"
+    threads: 16
+    shell:
+        """
+        software/bwa-mem2/bwa-mem2 index {input.consensus}
+        software/bwa-mem2/bwa-mem2 mem -t {threads} {input.consensus} {input.in1} {input.in2} | samtools view -hb -F4 -q10 -@{threads} | samtools sort -m 16G -l0  -@{threads} > {output.mapfile}	
+        samtools index {output.mapfile} -@{threads}
+        """
+
+rule init_polish:
+    input:
+        asm = "consensus/{prefix}_consensus.fasta",
+        mapfile = "init_polish/{prefix}_to_consensus.bam"
+    output:
+        asm = "init_polish/{prefix}.genome.fasta"
+    message: "Polishing with Pilon"
+    threads: 16
+    params:
+        out = "--output {prefix}.genome",
+        outdir = "--outdir polish"
+    shell:
+        """
+        pilon --genome {input.asm} --frags {input.mapfile} --fix "all","amb" --changes --threads {threads} --diploid {params.out} {params.outdir}
+        # rename contigs
+        sed -i 's/Backbone/Talbacares/g' {output.asm} && sed -i 's/_pilon//g' {output.asm}	
+	"""
+
+rule map_for_purge:
+    input:
+        in1 = "reads/short_trimmed/{prefix}.illumina.R1.fq",
+        in2 = "reads/short_trimmed/{prefix}.illumina.R2.fq",
+        consensus = "init_polish/{prefix}.genome.fasta"
+    output: 
+        mapfile = "purge_haplotigs/first/{prefix}_to_assembly.bam",
+        mapindex = "purge_haplotigs/first/{prefix}_to_assembly.bam.bai"
+    message: "Mapping short reads onto the polished consensus assembly"
     threads: 16
     shell:
         """
@@ -148,11 +183,11 @@ rule map_for_purge:
 
 rule purge_haplotigs_I_hist:
     input:
-        consensus = "consensus/{prefix}_consensus.fasta",
-        mapfile = "purge_haplotigs/first/{prefix}_to_consensus.bam"
+        assembly = "init_polish/{prefix}.genome.fasta",
+        mapfile = "purge_haplotigs/first/{prefix}_to_assembly.bam"
     output:
-        histo = "purge_haplotigs/first/{prefix}_to_consensus.bam.gencov",
-        hist_image = "purge_haplotigs/first/{prefix}_to_consensus.bam.histogram.png"
+        histo = "purge_haplotigs/first/{prefix}_to_assembly.bam.gencov",
+        hist_image = "purge_haplotigs/first/{prefix}_to_assembly.bam.histogram.png"
     message: "Generating coverage histogram for purging"
     threads: 16
     params:
@@ -165,9 +200,9 @@ rule purge_haplotigs_I_hist:
 
 rule purge_haplotigs_suspects_I:
     input:
-        hist_cov = "purge_haplotigs/first/{prefix}_to_consensus.bam.gencov"  
+        hist_cov = "purge_haplotigs/first/{prefix}_to_assembly.bam.gencov"  
     output:
-        cov_out = "purge_haplotigs/first/{prefix}_coverage_stats.csv"
+        cov_out = "purge_haplotigs/first/{prefix}_assembly_stats.csv"
     params:
         low = "-low 192",
         mid = "-mid 352",
@@ -338,7 +373,7 @@ rule final_polish:
         outdir = "--outdir polish"
     shell:
         """
-        pilon --genome {input.asm} --frags {input.mapfile} --changes --diploid {params.out} {params.outdir}
+        pilon --genome {input.asm} --frags {input.mapfile} --fix "all","amb" --changes --threads {threads} --diploid {params.out} {params.outdir}
         # rename contigs
         sed -i 's/Backbone/Talbacares/g' {output.asm} && sed -i 's/_pilon//g' {output.asm}
         """
