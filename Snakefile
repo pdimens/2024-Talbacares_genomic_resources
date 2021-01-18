@@ -1,5 +1,5 @@
 rule all:
-    input: "purge_haplotigs/first/{prefix}_to_assembly.bam.gencov"
+    input: "purge_haplotigs/first/YFT_to_assembly.bam.gencov"
     message: "Generating report of final assembly "
     threads: 16
     #shell: "python software/quast/quast.py --ref-bam {input.mapfile} --eukaryote --large --rna-finding --conserved-genes-finding -o polish -r {input} --threads {threads} {input}"
