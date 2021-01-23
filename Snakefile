@@ -96,7 +96,7 @@ rule concat_contigs:
         longreads = "reads/long/{prefix}.pb.fasta",
         short_contigs = "sparseassembler/{prefix}_contigs.txt",
     output:
-        concat_contigs = "reads/consensus_concat/{prefix}_contigs.pb.fasta"
+        concat_contigs = temp("reads/consensus_concat/{prefix}_contigs.pb.fasta")
     message: "Concatenating contigs for consensus"
     shell:
         """
@@ -135,8 +135,8 @@ rule map_for_initial_polish:
         in2 = "reads/short_trimmed/{prefix}.illumina.R2.fq",
         consensus = "consensus/{prefix}_consensus.fasta"
     output: 
-        mapfile = "init_polish/{prefix}_to_consensus.bam",
-        mapindex = "init_polish/{prefix}_to_consensus.bam.bai"
+        mapfile = temp("init_polish/{prefix}_to_consensus.bam"),
+        mapindex = temp("init_polish/{prefix}_to_consensus.bam.bai")
     message: "Mapping short reads onto the consensus genome for first round of pilon polishing"
     threads: 16
     shell:
@@ -149,7 +149,8 @@ rule map_for_initial_polish:
 rule init_polish:
     input:
         asm = "consensus/{prefix}_consensus.fasta",
-        mapfile = "init_polish/{prefix}_to_consensus.bam"
+        mapfile = "init_polish/{prefix}_to_consensus.bam",
+	mapindex = "init_polish/{prefix}_to_consensus.bam.bai"
     output:
         asm = "init_polish/{prefix}.genome.fasta"
     message: "Polishing with Pilon"
@@ -159,7 +160,7 @@ rule init_polish:
         outdir = "--outdir polish"
     shell:
         """
-        pilon --genome {input.asm} --frags {input.mapfile} --fix "all","amb" --changes --threads {threads} --diploid {params.out} {params.outdir}
+        pilon --genome {input.asm} --frags {input.mapfile} --fix "all" --changes --threads {threads} --diploid {params.out} {params.outdir}
         # rename contigs
         sed -i 's/Backbone/Talbacares/g' {output.asm} && sed -i 's/_pilon//g' {output.asm}	
 	"""
@@ -170,8 +171,8 @@ rule map_for_purge:
         in2 = "reads/short_trimmed/{prefix}.illumina.R2.fq",
         consensus = "init_polish/{prefix}.genome.fasta"
     output: 
-        mapfile = "purge_haplotigs/first/{prefix}_to_assembly.bam",
-        mapindex = "purge_haplotigs/first/{prefix}_to_assembly.bam.bai"
+        mapfile = temp("purge_haplotigs/first/{prefix}_to_assembly.bam"),
+        mapindex = temp("purge_haplotigs/first/{prefix}_to_assembly.bam.bai")
     message: "Mapping short reads onto the polished consensus assembly"
     threads: 16
     shell:
@@ -184,7 +185,8 @@ rule map_for_purge:
 rule purge_haplotigs_I_hist:
     input:
         assembly = "init_polish/{prefix}.genome.fasta",
-        mapfile = "purge_haplotigs/first/{prefix}_to_assembly.bam"
+        mapfile = "purge_haplotigs/first/{prefix}_to_assembly.bam",
+	mapindex = "purge_haplotigs/first/{prefix}_to_assembly.bam.bai"
     output:
         histo = "purge_haplotigs/first/{prefix}_to_assembly.bam.gencov",
         hist_image = "purge_haplotigs/first/{prefix}_to_assembly.bam.histogram.png"
