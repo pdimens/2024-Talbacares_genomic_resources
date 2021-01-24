@@ -9,3 +9,5 @@ init_polish/
 polish/
 purge_haplo_1/
 purge_haplo_2/
+software/quast/quast_libs
+software/quast/test_data
