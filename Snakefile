@@ -136,7 +136,7 @@ rule map_long_racon_polish:
 	threads: 10
 	shell:
 		"""
-		minimap2 -t {threads} -ax map-pb  {input.consensus} {input.reads} > {output}
+		minimap2 -t {threads} -ax map-pb --sam-hit-only {input.consensus} {input.reads} > {output}
 		"""
 
 rule racon_polish_long:
@@ -185,7 +185,7 @@ rule map_short_racon_polish:
 	threads: 10
 	shell:
 		"""
-		minimap2 -t {threads} -ax sr {input.assembly} {input.reads} | samtools view -h -F4 -q10 -@{threads} > {output}
+		minimap2 -t {threads} -ax sr --sam-hit-only {input.assembly} {input.reads} | samtools view -h -F4 -q10 -@{threads} > {output}
 		"""
 
 rule racon_short_polish:
