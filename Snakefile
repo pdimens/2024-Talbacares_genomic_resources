@@ -1,11 +1,9 @@
 rule all:
-    input: "purge_haplotigs/first/YFT_to_assembly.bam.gencov"
-    message: "Generating report of final assembly "
+    input: "init_polish/{prefix}.racon_longshort.fasta"
+    message: "Generating report for genome assembly"
     threads: 16
     #shell: "python software/quast/quast.py --ref-bam {input.mapfile} --eukaryote --large --rna-finding --conserved-genes-finding -o polish -r {input} --threads {threads} {input}"
 
-#asm = "polish/YFT.genome.fasta",
-#mapfile = "genome_report/YFT_genome.bam",
 
 rule trim_short:
     input:
@@ -129,41 +127,81 @@ rule consensus:
         mv tmp/final_assembly.fasta ../{output.consensus} && rm -r tmp
         """
 
-rule map_for_initial_polish:
+rule map_long_racon_polish:
     input:
-        in1 = "reads/short_trimmed/{prefix}.illumina.R1.fq",
-        in2 = "reads/short_trimmed/{prefix}.illumina.R2.fq",
+        reads = "reads/long/{prefix}.pb.fasta",
         consensus = "consensus/{prefix}_consensus.fasta"
     output: 
-        mapfile = temp("init_polish/{prefix}_to_consensus.bam"),
-        mapindex = temp("init_polish/{prefix}_to_consensus.bam.bai")
-    message: "Mapping short reads onto the consensus genome for first round of pilon polishing"
-    threads: 16
+        mapfile = temp("init_polish/{prefix}_to_consensus.sam"),
+    message: "Mapping long reads onto the consensus genome for first round of racon polishing"
+    threads: 10
     shell:
         """
-        software/bwa-mem2/bwa-mem2 index {input.consensus}
-        software/bwa-mem2/bwa-mem2 mem -t {threads} {input.consensus} {input.in1} {input.in2} | samtools view -hb -F4 -q10 -@{threads} | samtools sort -m 16G -l0  -@{threads} > {output.mapfile}	
-        samtools index {output.mapfile} -@{threads}
+        minimap2 -t {threads} -ax map-pb  {input.consensus} {input.reads} > {output}
         """
 
-rule init_polish:
+rule racon_polish_long:
     input:
-        asm = "consensus/{prefix}_consensus.fasta",
-        mapfile = "init_polish/{prefix}_to_consensus.bam",
-	mapindex = "init_polish/{prefix}_to_consensus.bam.bai"
+	reads = "reads/long/{prefix}.pb.fasta",
+        assembly = "consensus/{prefix}_consensus.fasta",
+        mapfile = "init_polish/{prefix}_to_consensus.sam"
     output:
-        asm = "init_polish/{prefix}.genome.fasta"
-    message: "Polishing with Pilon"
-    threads: 16
-    params:
-        out = "--output {prefix}.genome",
-        outdir = "--outdir polish"
+        asm = "init_polish/{prefix}.racon_long.fasta"
+    message: "Polishing consensus with racon using long reads"
+    threads: 10
     shell:
         """
-        pilon --genome {input.asm} --frags {input.mapfile} --fix "all" --changes --threads {threads} --diploid {params.out} {params.outdir}
-        # rename contigs
-        sed -i 's/Backbone/Talbacares/g' {output.asm} && sed -i 's/_pilon//g' {output.asm}	
-	"""
+        racon -t {threads} {input.reads} {input.mapfile} {input.assembly} > {output}
+        """
+
+rule subsample_shortreads:
+    input:
+        reads_f = "reads/short_trimmed/{prefix}.illumina.R1.fq",
+        reads_r = "reads/short_trimmed/{prefix}.illumina.R2.fq",
+    output:
+	reads_f = "reads/short_trimmed/{prefix}.illumina.70x.R1.fq",
+	reads_r = "reads/short_trimmed/{prefix}.illumina.70x.R2.fq",
+    message: "Subsampling 25% of the short reads with seqtk"
+    shell:
+        """
+        seqtk sample -s100 {input.reads_f} .25 > {output.reads_f}
+	seqtk sample -s100 {input.reads_f} .25 > {output.reads_f}
+        """
+
+rule racon_preprocess_illumina:
+    input:
+        reads_f = "reads/short_trimmed/{prefix}.illumina.70x.R1.fq",
+        reads_r = "reads/short_trimmed/{prefix}.illumina.70x.R2.fq",
+    output: temp("reads/short_trimmed/{prefix}.illumina.70x.racon.fq")
+    message: "Preprocessing short reads to work for racon polishing"
+    shell: "software/racon/racon_preprocess.py {input} > {output}
+
+rule map_short_racon_polish:
+    input:
+	reads = "reads/short_trimmed/{prefix}.illumina.70x.racon.fq",
+        assembly = "init_polish/{prefix}.racon_long.fasta"
+    output:
+        mapfile = temp("init_polish/{prefix}.short_to_longpolished.sam")
+    message: "Mapping 70x subsampled short reads to long-read polished consensus"
+    threads: 10
+    shell:
+        """
+        minimap2 -t {threads} -ax sr {input.assembly} {input.reads} | samtools view -h -F4 -q10 -@{threads} > {output}
+        """
+
+rule racon_short_polish:
+    input:
+        reads = "reads/short_trimmed/{prefix}.illumina.70x.racon.fq",
+        mapfile = "init_polish/{prefix}.short_to_longpolished.sam",
+        assembly = "assembly = "init_polish/{prefix}.racon_long.fasta"
+    output:
+        asm = "init_polish/{prefix}.racon_longshort.fasta"
+    message: "Polishing consensus with racon using subsampled short reads"
+    threads: 10
+    shell:
+        """
+        racon -t {threads} {input.reads} {input.mapfile} {input.assembly} > {output}
+        """
 
 rule map_for_purge:
     input:
