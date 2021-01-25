@@ -133,7 +133,7 @@ rule map_long_racon_polish:
 	output: 
 		mapfile = temp("init_polish/{prefix}_to_consensus.sam"),
 	message: "Mapping long reads onto the consensus genome for first round of racon polishing"
-	threads: 10
+	threads: 16
 	shell:
 		"""
 		minimap2 -t {threads} -ax map-pb --sam-hit-only {input.consensus} {input.reads} > {output}
@@ -164,7 +164,7 @@ rule subsample_shortreads:
 	shell:
 		"""
 		seqtk sample -s100 {input.reads_f} .25 > {output.reads_f}
-	seqtk sample -s100 {input.reads_f} .25 > {output.reads_f}
+		seqtk sample -s100 {input.reads_f} .25 > {output.reads_f}
 		"""
 
 rule racon_preprocess_illumina:
@@ -182,10 +182,10 @@ rule map_short_racon_polish:
 	output:
 		mapfile = temp("init_polish/{prefix}.short_to_longpolished.sam")
 	message: "Mapping 70x subsampled short reads to long-read polished consensus"
-	threads: 10
+	threads: 30
 	shell:
 		"""
-		minimap2 -t {threads} -ax sr --sam-hit-only {input.assembly} {input.reads} | samtools view -h -F4 -q10 -@{threads} > {output}
+		minimap2 -t {threads} -ax sr --sam-hit-only {input.assembly} {input.reads} | samtools view -h -F4 -q15 --nthreads {threads} > {output}
 		"""
 
 rule racon_short_polish:
@@ -196,7 +196,7 @@ rule racon_short_polish:
 	output:
 		asm = "init_polish/{prefix}.racon_longshort.fasta"
 	message: "Polishing consensus with racon using subsampled short reads"
-	threads: 10
+	threads: 30
 	shell:
 		"""
 		racon -t {threads} {input.reads} {input.mapfile} {input.assembly} > {output}
