@@ -1,0 +1,33 @@
+name: rust
+channels:
+  - pkgw-forge
+  - bioconda
+  - conda-forge
+  - defaults
+  - r
+dependencies:
+  - _libgcc_mutex=0.1=conda_forge
+  - _openmp_mutex=4.5=1_gnu
+  - binutils_impl_linux-64=2.35.1=h193b22a_2
+  - ca-certificates=2020.12.5=ha878542_0
+  - cargo=0.19.0=0
+  - curl=7.64.0=h646f8bb_0
+  - gcc_impl_linux-64=9.3.0=h70c0ae5_18
+  - kernel-headers_linux-64=2.6.32=h77966d4_13
+  - krb5=1.16.3=hc83ff2d_1000
+  - ld_impl_linux-64=2.35.1=hea4e1c9_2
+  - libcurl=7.64.0=h01ee5af_0
+  - libedit=3.1.20191231=he28a2e2_2
+  - libgcc-devel_linux-64=9.3.0=h7864c58_18
+  - libgcc-ng=9.3.0=h2828fa1_18
+  - libgomp=9.3.0=h2828fa1_18
+  - libssh2=1.8.0=h1ad7b7a_1003
+  - libstdcxx-ng=9.3.0=h6de172a_18
+  - ncurses=6.2=h58526e2_4
+  - openssl=1.0.2u=h516909a_0
+  - rust=1.49.0=h3bf0571_0
+  - rust-std-x86_64-unknown-linux-gnu=1.49.0=hc1431ca_0
+  - sysroot_linux-64=2.12=h77966d4_13
+  - tk=8.6.10=h21135ba_1
+  - zlib=1.2.11=h516909a_1010
+
