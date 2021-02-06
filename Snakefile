@@ -1,5 +1,5 @@
 rule all:
-	input: "init_polish/YFT.racon_longshort.fasta"
+	input: "final_polish/YFT.genome.fasta"
 	message: "Generating report for genome assembly"
 	threads: 16
 	#shell: "python software/quast/quast.py --ref-bam {input.mapfile} --eukaryote --large --rna-finding --conserved-genes-finding -o polish -r {input} --threads {threads} {input}"
@@ -167,6 +167,7 @@ rule subsample_shortreads:
 		seqtk sample -s100 {input.reads_f} .25 > {output.reads_f}
 		"""
 
+### REMOVE
 rule racon_preprocess_illumina:
 	input:
 		reads_f = "reads/short_trimmed/{prefix}.illumina.70x.R1.fq",
@@ -185,19 +186,166 @@ rule map_short_racon_polish:
 	threads: 30
 	shell:
 		"""
-		minimap2 -t {threads} -ax sr --sam-hit-only {input.assembly} {input.reads} | samtools view -h -F4 -q15 --nthreads {threads} > {output}
+		minimap2 -t {threads} -ax sr --sam-hit-only {input.assembly} {input.reads} | samtools view -h -F4 -q15 -@ {threads} > {output}
+		"""
+####
+
+rule map_illumina:
+	input:
+		reads_f = "reads/short_trimmed/{prefix}.illumina.70x.R1.fq",
+		reads_r = "reads/short_trimmed/{prefix}.illumina.70x.R2.fq",
+		assembly = "init_polish/{prefix}.racon_long.fasta"
+	output: temp("init_polish/{prefix}.short_to_longpolished.bam")
+	message: "minimap mapping of short reads onto 1st round long-polished assembly"
+	threads: 16
+	shell: 
+		"""
+		minimap2 -t {threads} -ax sr --sam-hit-only {input.assembly} {input.reads_f} {input.reads_r} | samtools view -hb -F4 -q15 -@ {threads} > {output}.tmp
+		samtools sort -m 16G -l0  -@{threads} {output}.tmp > {output} && rm {output}.tmp
+		samtools index {output} -@{threads}
 		"""
 
-rule racon_short_polish:
+rule pilon_short_polish:
 	input:
-		reads = "reads/short_trimmed/{prefix}.illumina.70x.racon.fq",
-		mapfile = "init_polish/{prefix}.short_to_longpolished.sam",
+		mapfile = "init_polish/{prefix}.short_to_longpolished.bam",
 		assembly = "init_polish/{prefix}.racon_long.fasta"
 	output:
-		asm = "init_polish/{prefix}.racon_longshort.fasta"
-	message: "Polishing consensus with racon using subsampled short reads"
+		asm = "init_polish/{prefix}.pilon_longshort.fasta"
+	message: "Polishing consensus with pilon using subsampled short reads"
 	threads: 30
+	params:
+		out = "--output {prefix}.pilon_longshort",
+		outdir = "--outdir init_polish"
 	shell:
 		"""
-		racon -t {threads} {input.reads} {input.mapfile} {input.assembly} > {output}
+		pilon --genome {input.assembly} --frags {input.mapfile} --changes --threads {threads} --diploid {params}
+		seqtk seq -l0 {output} > {output}.tmp
+		fastaprefix {output}.tmp Talbacares > {output} && rm {output}.tmp
+		"""
+
+rule map_for_mec:
+	input:
+		in1 = "reads/short_trimmed/{prefix}.illumina.R1.fq",
+		in2 = "reads/short_trimmed/{prefix}.illumina.R2.fq",
+		assembly = "init_polish/{prefix}.pilon_longshort.fasta"
+	output: 
+		mapfile = "misassembly/{prefix}_to_assembly.bam",
+		mapindex = "misassembly/{prefix}_to_assembly.bam.bai"
+	message: "Mapping short reads onto the polished consensus assembly"
+	threads: 16
+	shell:
+		"""
+		software/bwa-mem2/bwa-mem2 index {input.assembly}
+		software/bwa-mem2/bwa-mem2 mem -t {threads} {input.assembly} {input.in1} {input.in2} | samtools view -hb -F4 -q30 -@{threads} | samtools sort -m 7G -l2  -@{threads} > {output.mapfile}	
+		samtools index {output.mapfile} -@{threads}
+		"""
+
+rule MEC:
+	input:
+		f = "reads/short_trimmed/{prefix}.illumina.R1.fq",
+		r = "reads/short_trimmed/{prefix}.illumina.R2.fq",
+		asm = "init_polish/{prefix}.pilon_longshort.fasta",
+		mapfile = "misassembly/{prefix}_to_assembly.bam",
+		mapindex = "misassembly/{prefix}_to_assembly.bam.bai"
+	output: 
+		asm = "misassembly/{prefix}.MEC.fasta"
+	params: 
+		mapqual = "-q 32",
+		insertsize = "-m 300",
+		insertvariance = "-s 100"
+	message: "Finding and removing misassemblies using MEC"
+	shell:
+		"""
+		python2 software/MEC/src/mec.py -i {input.asm} -bam {input.mapfile} -o {output.asm} {params}
+		"""
+
+rule purge_haplotigs_I_hist:
+	input:
+		assembly = "init_polish/{prefix}.pilon_longshort.fasta",
+		mapfile = "purge_haplotigs/first/{prefix}_to_assembly.bam",
+		mapindex = "purge_haplotigs/first/{prefix}_to_assembly.bam.bai"
+	output:
+		histo = "purge_haplotigs/first/{prefix}_to_assembly.bam.gencov",
+		hist_image = "purge_haplotigs/first/{prefix}_to_assembly.bam.histogram.png"
+	message: "Generating coverage histogram for purging"
+	threads: 16
+	params:
+		depth = "-d 620"
+	shell:
+		"""
+		cd purge_haplotigs/first/
+		purge_haplotigs hist -b ../../{input.mapfile} -g ../../{input.assembly} -t {threads} {params}
+		"""
+
+rule purge_haplotigs_suspects_I:
+	input:
+		hist_cov = "purge_haplotigs/first/{prefix}_to_assembly.bam.gencov"  
+	output:
+		cov_out = "purge_haplotigs/first/{prefix}_assembly_stats.csv"
+	params:
+		low = "-low 192",
+		mid = "-mid 352",
+		high = "-high 448"
+	message: "Finding suspect contigs"
+	shell:
+		"""
+		purge_haplotigs cov -i {input} {params} -o {output} 
+		"""
+
+rule map_long_scaff:
+	input:
+		reads = "reads/long/{prefix}.pb.fasta",
+		assembly = "misassembly/{prefix}.MEC.fasta"
+	output: "scaffold/{prefix}.mec.paf",
+	message: "Mapping long reads onto the assembly for scaffolding"
+	threads: 16
+	shell:
+		"""
+		minimap2 -t {threads} -x map-pb {input.assembly} {input.reads} > {output}
+		"""
+
+rule scaffold:
+	input:
+		reads = "reads/long/{prefix}.pb.fasta",
+		assembly = "misassembly/{prefix}.MEC.fasta"
+	output: "scaffold/{prefix}.scaffold.fasta"
+	message: "Mapping long reads onto the assembly for scaffolding"
+	threads: 16
+	shell:
+		"""
+		java -Xms100g -Xmx100g -jar software/lrscaf/target/LRScaf-1.1.9.jar -x software/lrscaf/ScafConf.xml
+		mv scaffold/scaffolds.fasta {output}
+		"""
+
+rule map_illumina_scaffold:
+	input:
+		reads_f = "reads/short_trimmed/{prefix}.illumina.70x.R1.fq",
+		reads_r = "reads/short_trimmed/{prefix}.illumina.70x.R2.fq",
+		assembly = "scaffold/{prefix}.scaffold.fasta"
+	output: temp("final_polish/{prefix}.short_to_scaffold.bam")
+	message: "minimap mapping of short reads onto scaffolded assembly"
+	threads: 16
+	shell: 
+		"""
+		minimap2 -t {threads} -ax sr --sam-hit-only {input.assembly} {input.reads_f} {input.reads_r} | samtools view -hb -F4 -q15 -@ {threads} > {output}.tmp
+		samtools sort -m 16G -l0  -@{threads} {output}.tmp > {output} && rm {output}.tmp
+		samtools index {output} -@{threads}
+		"""
+
+rule pilon_short_scaffold_polish:
+	input:
+		mapfile = "final_polish/{prefix}.short_to_scaffold.bam",
+		assembly = "scaffold/{prefix}.scaffold.fasta"
+	output:
+		asm = "final_polish/{prefix}.genome.fasta"
+	message: "Polishing assembly with pilon using subsampled short reads"
+	threads: 30
+	params:
+		out = "--output {prefix}.genome",
+		outdir = "--outdir final_polish"
+	shell:
+		"""
+		pilon --genome {input.assembly} --frags {input.mapfile} --changes --threads {threads} --diploid {params}
+		seqtk seq -l0 {output} > {output}.tmp
+		fastaprefix {output}.tmp Talbacares > {output} && rm {output}.tmp
 		"""
