@@ -35,6 +35,20 @@ rule trim_short:
 		fastp --thread {threads} --in1 {input.F} --in2 {input.R} --out1 {output.F} --out2 {output.R} -h {log.html} -j {log.json} {params} &> {log.txt}
 		"""
 
+rule subsample_shortreads:
+	input:
+		reads_f = "reads/short_trimmed/{prefix}.illumina.R1.fq",
+		reads_r = "reads/short_trimmed/{prefix}.illumina.R2.fq",
+	output:
+		reads_f = "reads/short_trimmed/{prefix}.illumina.70x.R1.fq",
+		reads_r = "reads/short_trimmed/{prefix}.illumina.70x.R2.fq",
+	message: "Subsampling 25% of the short reads with seqtk"
+	shell:
+		"""
+		seqtk sample -s100 {input.reads_f} .25 > {output.reads_f}
+		seqtk sample -s100 {input.reads_f} .25 > {output.reads_f}
+		"""
+
 rule sparseassembler:
 	input:
 		in1 = "reads/short_trimmed/{short}.illumina.R1.fq",
@@ -60,6 +74,70 @@ rule sparseassembler:
 		SparseAssembler i1 ../{input.in1} i2 ../{input.in2} {params}
 		mv Contigs.txt ../{output}
 		"""
+
+rule karect_shortreads:
+	input:		
+		reads_f = "reads/short_trimmed/{prefix}.illumina.70x.R1.fq",
+		reads_r = "reads/short_trimmed/{prefix}.illumina.70x.R2.fq"
+	output:
+		karect_f = "reads/long_correct/karect_{prefix}.illumina.70x.R1.fq",
+		karect_r = "reads/long_correct/karect_{prefix}.illumina.70x.R2.fq"
+	message: "Creating De Bruijn graphs of short reads using Karect. Sit tight, this will take days"
+	threads: 32
+	shell:
+		"""
+		mkdir -p reads/long_correct/karect_output
+		./software/jabba/bin/karect \
+			-correct \
+			-threads={threads} \
+			-matchtype=hamming \
+			-celltype=diploid \
+			-inputfile={input.reads_f}  \
+			-inputfile={input.reads_r} \
+			-resultdir=reads/long_correct \
+			-tempdir=reads/long_correct/karect_output \
+			-memory=100
+		"""
+
+rule brownie_graphcorrect:
+	input:
+		karect_f = "reads/long_correct/karect_{prefix}.illumina.70x.R1.fq",
+		karect_r = "reads/long_correct/karect_{prefix}.illumina.70x.R2.fq"
+	output: "reads/long_correct/brownie_output/{prefix}.DBGraph.fasta"
+	message: "Performing graph correction with Brownie"
+	params: 
+		k = "-k 75"
+	threads: 32
+	shell:
+		"""
+		mkdir -p reads/long_correct/brownie_output
+		./software/jabba/bin/brownie graphCorrection -t {threads} {params} -p reads/long_correct/brownie_output {input}
+		mv reads/long_correct/brownie_output/DBGraph.fasta {output}
+		"""
+
+rule longread_correction:
+	input:
+		browniegraph = "reads/long_correct/brownie_output/{prefix}.DBGraph.fasta",
+		longreads = "reads/long/{prefix}.pb.fasta"
+	output: 
+		corrected = "reads/long_correct/jabba_output/Jabba-{prefix}.pb.fasta",
+		uncorrected = "reads/long_correct/jabba_output/Jabba-uncorrected-{prefix}.pb.fasta"
+	message: "Correcting long reads using the corrected DBG of the short reads via Jabba"
+	params:
+		k = "-k 75"
+	threads: 32
+	shell:
+		"""
+		./software/jabba/bin/jabba -t {threads} {params} -o reads/long_correct/jabba_output -g {input.browniegraph} -fasta {input.longreads}
+		"""
+
+rule concat_corrected_longreads:
+	input:
+		corrected = "reads/long_correct/jabba_output/Jabba-{prefix}.pb.fasta",
+		uncorrected = "reads/long_correct/jabba_output/Jabba-uncorrected-{prefix}.pb.fasta"
+	output: "reads/long_correct/{prefix}.pb.corrected.fasta"
+	message: "concatenating corrected and uncorrected long reads"
+	shell: "cat {input} > {output}"
 
 rule dbg2olc:
 	input:
@@ -126,9 +204,9 @@ rule consensus:
 		mv tmp/final_assembly.fasta ../{output.consensus} && rm -r tmp
 		"""
 
-rule map_long_racon_polish:
+rule map_long_racon_polish_1:
 	input:
-		reads = "reads/long/{prefix}.pb.fasta",
+		reads = "reads/long_correct/{prefix}.pb.corrected.fasta",
 		consensus = "consensus/{prefix}_consensus.fasta"
 	output: 
 		mapfile = temp("init_polish/{prefix}_to_consensus.sam"),
@@ -141,62 +219,79 @@ rule map_long_racon_polish:
 
 rule racon_polish_long:
 	input:
-		reads = "reads/long/{prefix}.pb.fasta",
+		reads = "reads/long_correct/{prefix}.pb.corrected.fasta",
 		assembly = "consensus/{prefix}_consensus.fasta",
 		mapfile = "init_polish/{prefix}_to_consensus.sam"
 	output:
-		asm = "init_polish/{prefix}.racon_long.fasta"
-	message: "Polishing consensus with racon using long reads"
+		asm = "init_polish/{prefix}.racon_long1.fasta"
+	message: "Polishing consensus with racon using long reads (round 1)"
 	threads: 10
 	shell:
 		"""
 		racon -t {threads} {input.reads} {input.mapfile} {input.assembly} > {output}
 		"""
 
-rule subsample_shortreads:
+rule map_long_racon_polish_2:
 	input:
-		reads_f = "reads/short_trimmed/{prefix}.illumina.R1.fq",
-		reads_r = "reads/short_trimmed/{prefix}.illumina.R2.fq",
-	output:
-		reads_f = "reads/short_trimmed/{prefix}.illumina.70x.R1.fq",
-		reads_r = "reads/short_trimmed/{prefix}.illumina.70x.R2.fq",
-	message: "Subsampling 25% of the short reads with seqtk"
+		reads = "reads/long_correct/{prefix}.pb.corrected.fasta",
+		consensus = "init_polish/{prefix}.racon_long1.fasta"
+	output: 
+		mapfile = temp("init_polish/{prefix}_to_racon1.sam"),
+	message: "Mapping long reads onto the consensus genome for second round of racon polishing"
+	threads: 16
 	shell:
 		"""
-		seqtk sample -s100 {input.reads_f} .25 > {output.reads_f}
-		seqtk sample -s100 {input.reads_f} .25 > {output.reads_f}
+		minimap2 -t {threads} -ax map-pb --sam-hit-only {input.consensus} {input.reads} > {output}
 		"""
 
-### REMOVE
-rule racon_preprocess_illumina:
+rule racon_polish_long_2:
 	input:
-		reads_f = "reads/short_trimmed/{prefix}.illumina.70x.R1.fq",
-		reads_r = "reads/short_trimmed/{prefix}.illumina.70x.R2.fq",
-	output: temp("reads/short_trimmed/{prefix}.illumina.70x.racon.fq")
-	message: "Preprocessing short reads to work for racon polishing"
-	shell: "software/racon/racon_preprocess.py {input} > {output}"
-
-rule map_short_racon_polish:
-	input:
-		reads = "reads/short_trimmed/{prefix}.illumina.70x.racon.fq",
-		assembly = "init_polish/{prefix}.racon_long.fasta"
+		reads = "reads/long_correct/{prefix}.pb.corrected.fasta",
+		assembly = "init_polish/{prefix}.racon_long1.fasta",
+		mapfile = "init_polish/{prefix}_to_racon1.sam"
 	output:
-		mapfile = temp("init_polish/{prefix}.short_to_longpolished.sam")
-	message: "Mapping 70x subsampled short reads to long-read polished consensus"
-	threads: 30
+		asm = "init_polish/{prefix}.racon_long2.fasta"
+	message: "Polishing consensus with racon using long reads (round 2)"
+	threads: 10
 	shell:
 		"""
-		minimap2 -t {threads} -ax sr --sam-hit-only {input.assembly} {input.reads} | samtools view -h -F4 -q15 -@ {threads} > {output}
+		racon -t {threads} {input.reads} {input.mapfile} {input.assembly} > {output}
 		"""
-####
+
+rule map_long_racon_polish_3:
+	input:
+		reads = "reads/long_correct/{prefix}.pb.corrected.fasta",
+		consensus = "init_polish/{prefix}.racon_long2.fasta"
+	output: 
+		mapfile = temp("init_polish/{prefix}_to_racon2.sam"),
+	message: "Mapping long reads onto the consensus genome for third round of racon polishing"
+	threads: 16
+	shell:
+		"""
+		minimap2 -t {threads} -ax map-pb --sam-hit-only {input.consensus} {input.reads} > {output}
+		"""
+
+rule racon_polish_long_3:
+	input:
+		reads = "reads/long_correct/{prefix}.pb.corrected.fasta",
+		assembly = "init_polish/{prefix}.racon_long2.fasta",
+		mapfile = "init_polish/{prefix}_to_racon2.sam"
+	output:
+		asm = "init_polish/{prefix}.racon_long3.fasta"
+	message: "Polishing consensus with racon using long reads (round 3)"
+	threads: 10
+	shell:
+		"""
+		racon -t {threads} {input.reads} {input.mapfile} {input.assembly} > {output}
+		"""
 
 rule map_illumina:
 	input:
 		reads_f = "reads/short_trimmed/{prefix}.illumina.70x.R1.fq",
 		reads_r = "reads/short_trimmed/{prefix}.illumina.70x.R2.fq",
-		assembly = "init_polish/{prefix}.racon_long.fasta"
+		assembly = "init_polish/{prefix}.racon_long3.fasta"
 	output: temp("init_polish/{prefix}.short_to_longpolished.bam")
-	message: "minimap mapping of short reads onto 1st round long-polished assembly"
+	message: "minimap mapping of short reads onto 3rd round long-polished assembly"
 	threads: 16
 	shell: 
 		"""
@@ -208,7 +303,7 @@ rule map_illumina:
 rule pilon_short_polish:
 	input:
 		mapfile = "init_polish/{prefix}.short_to_longpolished.bam",
-		assembly = "init_polish/{prefix}.racon_long.fasta"
+		assembly = "init_polish/{prefix}.racon_long3.fasta"
 	output:
 		asm = "init_polish/{prefix}.pilon_longshort.fasta"
 	message: "Polishing consensus with pilon using subsampled short reads"
@@ -223,80 +318,11 @@ rule pilon_short_polish:
 		fastaprefix {output}.tmp Talbacares > {output} && rm {output}.tmp
 		"""
 
-rule map_for_mec:
-	input:
-		in1 = "reads/short_trimmed/{prefix}.illumina.R1.fq",
-		in2 = "reads/short_trimmed/{prefix}.illumina.R2.fq",
-		assembly = "init_polish/{prefix}.pilon_longshort.fasta"
-	output: 
-		mapfile = "misassembly/{prefix}_to_assembly.bam",
-		mapindex = "misassembly/{prefix}_to_assembly.bam.bai"
-	message: "Mapping short reads onto the polished consensus assembly"
-	threads: 16
-	shell:
-		"""
-		software/bwa-mem2/bwa-mem2 index {input.assembly}
-		software/bwa-mem2/bwa-mem2 mem -t {threads} {input.assembly} {input.in1} {input.in2} | samtools view -hb -F4 -q30 -@{threads} | samtools sort -m 7G -l2  -@{threads} > {output.mapfile}	
-		samtools index {output.mapfile} -@{threads}
-		"""
-
-rule MEC:
-	input:
-		f = "reads/short_trimmed/{prefix}.illumina.R1.fq",
-		r = "reads/short_trimmed/{prefix}.illumina.R2.fq",
-		asm = "init_polish/{prefix}.pilon_longshort.fasta",
-		mapfile = "misassembly/{prefix}_to_assembly.bam",
-		mapindex = "misassembly/{prefix}_to_assembly.bam.bai"
-	output: 
-		asm = "misassembly/{prefix}.MEC.fasta"
-	params: 
-		mapqual = "-q 32",
-		insertsize = "-m 300",
-		insertvariance = "-s 100"
-	message: "Finding and removing misassemblies using MEC"
-	shell:
-		"""
-		python2 software/MEC/src/mec.py -i {input.asm} -bam {input.mapfile} -o {output.asm} {params}
-		"""
-
-rule purge_haplotigs_I_hist:
-	input:
-		assembly = "init_polish/{prefix}.pilon_longshort.fasta",
-		mapfile = "purge_haplotigs/first/{prefix}_to_assembly.bam",
-		mapindex = "purge_haplotigs/first/{prefix}_to_assembly.bam.bai"
-	output:
-		histo = "purge_haplotigs/first/{prefix}_to_assembly.bam.gencov",
-		hist_image = "purge_haplotigs/first/{prefix}_to_assembly.bam.histogram.png"
-	message: "Generating coverage histogram for purging"
-	threads: 16
-	params:
-		depth = "-d 620"
-	shell:
-		"""
-		cd purge_haplotigs/first/
-		purge_haplotigs hist -b ../../{input.mapfile} -g ../../{input.assembly} -t {threads} {params}
-		"""
-
-rule purge_haplotigs_suspects_I:
-	input:
-		hist_cov = "purge_haplotigs/first/{prefix}_to_assembly.bam.gencov"  
-	output:
-		cov_out = "purge_haplotigs/first/{prefix}_assembly_stats.csv"
-	params:
-		low = "-low 192",
-		mid = "-mid 352",
-		high = "-high 448"
-	message: "Finding suspect contigs"
-	shell:
-		"""
-		purge_haplotigs cov -i {input} {params} -o {output} 
-		"""
-
 rule map_long_scaff:
 	input:
-		reads = "reads/long/{prefix}.pb.fasta",
-		assembly = "misassembly/{prefix}.MEC.fasta"
-	output: "scaffold/{prefix}.mec.paf",
+		reads = "reads/long_correct/{prefix}.pb.corrected.fasta",
+		assembly = "init_polish/{prefix}.pilon_longshort.fasta"
+	output: "scaffold/{prefix}.polished.paf",
 	message: "Mapping long reads onto the assembly for scaffolding"
 	threads: 16
 	shell:
@@ -306,10 +332,11 @@ rule map_long_scaff:
 
 rule scaffold:
 	input:
-		reads = "reads/long/{prefix}.pb.fasta",
-		assembly = "misassembly/{prefix}.MEC.fasta"
+		reads = "reads/long_correct/{prefix}.pb.corrected.fasta",
+		alignments = "scaffold/{prefix}.polished.paf",
+		assembly = "init_polish/{prefix}.pilon_longshort.fasta"
 	output: "scaffold/{prefix}.scaffold.fasta"
-	message: "Mapping long reads onto the assembly for scaffolding"
+	message: "Scaffolding the assembly using corrected long reads"
 	threads: 16
 	shell:
 		"""
