@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scaffold>
+<!--The input file for scaffolding, including contigs and aligned files (i.e. m5, m4 or mm file) -->
+	<input>
+		<contig>init_polish/YFT.pilon_longshort.fasta</contig>
+		<mm>scaffold/YFT.polished.paf</mm>
+	</input>
+	<!-- The output folder for scaffolding -->
+	<output>scaffold</output>
+	<!-- The parameters for scaffolding-->
+	<paras>
+		 <!--More details are showed in README.md-->
+         <min_contig_length>400</min_contig_length>
+		 <identity>0.1</identity>
+         <min_overlap_length>400</min_overlap_length>
+         <min_overlap_ratio>0.8</min_overlap_ratio>
+         <max_overhang_length>400</max_overhang_length>
+         <max_overhang_ratio>0.1</max_overhang_ratio>
+         <max_end_length>500</max_end_length>
+         <max_end_ratio>0.1</max_end_ratio>
+         <min_supported_links>1</min_supported_links>
+		 <tip_length>1500</tip_length>
+		 <ratio>0.2</ratio>
+		 <repeat_mask>true</repeat_mask>
+		 <iqr_time>2</iqr_time>
+		 <mmcm>8</mmcm> <!--only for Minimap aligned outcome.-->
+		 <process>10</process>
+	</paras>
+</scaffold>

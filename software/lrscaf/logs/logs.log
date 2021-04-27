@@ -1,0 +1,42 @@
+2021-02-02 12:13:26  [ ERROR ]  Error: 
+org.apache.commons.cli.MissingArgumentException: Missing argument for option: x
+	at org.apache.commons.cli.DefaultParser.checkRequiredArgs(DefaultParser.java:211)
+	at org.apache.commons.cli.DefaultParser.handleOption(DefaultParser.java:599)
+	at org.apache.commons.cli.DefaultParser.handleShortAndLongOption(DefaultParser.java:480)
+	at org.apache.commons.cli.DefaultParser.handleToken(DefaultParser.java:243)
+	at org.apache.commons.cli.DefaultParser.parse(DefaultParser.java:120)
+	at org.apache.commons.cli.DefaultParser.parse(DefaultParser.java:76)
+	at org.apache.commons.cli.DefaultParser.parse(DefaultParser.java:60)
+	at agis.ps.Main.main(Main.java:36)
+2021-02-02 12:13:26  [ ERROR ]  agis.ps.Main	Missing argument for option: x
+2021-02-02 12:13:26  [ INFO ]  
+LRScaf is a scaffolder by using Thired Generation Sequencing data to scaffold any draft assemblied genomes. it supports command line argument or XML configure file!
+Usage:
+XML: java -jar LRScaf.jar -x <XML_File>
+CML: java -jar LRScaf.jar -c <Draft_Assemblies_File> -a <Alinged_File> -t <m5|m4|mm|sam> [Other_Options]
+Argument Details:
+XML configure file:
+-x	--xml	<arg>	The parameter XML file! All command-line parameters would be omitted if set.
+Command line options:
+-c	--contig	<arg>	Required. The file of pre-assembled contigs in fasta format.
+## Input file:
+-a	--alignedFile	Required. The aligned file by using Minimap or BLASR mapper!
+-t	--type	Requried. The aligned file format, supported: 1) mm for Minimap; 2)m4, m5 or sam for BLASR.
+## Output folder:
+-o	--output	<arg>	Required. The scaffolding output folder.
+## Other options:
+-i	--identity	<arg>	For BLASR Mapper: Default <0.8>; For minimap Mapper: Default <0.1>.
+-r	--ratio	<arg>	The ratio for deleting error prone edges! Default: <0.2>.
+-misl	--miniSupLinks	<arg>	The minimum support links number! Default: <1>.
+-iqrt	--iqrtime	The IQR time for defined repeat outlier.Default: <1.5>
+-micl	--miniCntLen	<arg>	The minimum contig's length (must be larget than 200 bp) for scaffolding! Default:<200>.
+-mioll	--miniOLLen	<arg>	The minimum overlap length threshold for alignment! Default: <160>.
+-miolr	--miniOLRatio	<arg>	The minimum overlap ratio threshold for alignment! Default: <0.8>.
+-mxel	--maxEndLen	<arg>	The maximum ending length of Long Read! Default: <300>.
+-mxer	--maxEndRatio	<arg>	The maximum ending ratio of Long Read! Default: <0.1>.
+-mxohl	--maxOHLen	<arg>	The maximum overhang length threshold for alignment! Default: <300>.
+-mxohr	--maxOHRatio	<arg>	The maximum overhang ratio threshold for alignment! Default: <0.1>.
+-mmcm	--mmcm	<arg>	The filter parameter only for last column format of Minimap, default:<8>.
+-p	--process	<arg	The multi-threads settings, default:<4>.
+-h	--help	The help infomation!
+Please report issues at <github_project_website>!
