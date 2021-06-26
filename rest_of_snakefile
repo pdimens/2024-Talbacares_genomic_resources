@@ -1,3 +1,123 @@
+### REMOVE
+
+rule purge_haplotigs_I_hist:
+	input:
+		assembly = "init_polish/{prefix}.pilon_longshort.fasta",
+		mapfile = "purge_haplotigs/first/{prefix}_to_assembly.bam",
+		mapindex = "purge_haplotigs/first/{prefix}_to_assembly.bam.bai"
+	output:
+		histo = "purge_haplotigs/first/{prefix}_to_assembly.bam.gencov",
+		hist_image = "purge_haplotigs/first/{prefix}_to_assembly.bam.histogram.png"
+	message: "Generating coverage histogram for purging"
+	threads: 16
+	params:
+		depth = "-d 620"
+	shell:
+		"""
+		cd purge_haplotigs/first/
+		purge_haplotigs hist -b ../../{input.mapfile} -g ../../{input.assembly} -t {threads} {params}
+		"""
+
+rule purge_haplotigs_suspects_I:
+	input:
+		hist_cov = "purge_haplotigs/first/{prefix}_to_assembly.bam.gencov"  
+	output:
+		cov_out = "purge_haplotigs/first/{prefix}_assembly_stats.csv"
+	params:
+		low = "-low 192",
+		mid = "-mid 352",
+		high = "-high 448"
+	message: "Finding suspect contigs"
+	shell:
+		"""
+		purge_haplotigs cov -i {input} {params} -o {output} 
+		"""
+
+rule map_for_mec:
+	input:
+		in1 = "reads/short_trimmed/{prefix}.illumina.R1.fq",
+		in2 = "reads/short_trimmed/{prefix}.illumina.R2.fq",
+		assembly = "init_polish/{prefix}.pilon_longshort.fasta"
+	output: 
+		mapfile = "misassembly/{prefix}_to_assembly.bam",
+		mapindex = "misassembly/{prefix}_to_assembly.bam.bai"
+	message: "Mapping short reads onto the polished consensus assembly"
+	threads: 16
+	shell:
+		"""
+		software/bwa-mem2/bwa-mem2 index {input.assembly}
+		software/bwa-mem2/bwa-mem2 mem -t {threads} {input.assembly} {input.in1} {input.in2} | samtools view -hb -F4 -q30 -@{threads} | samtools sort -m 7G -l2  -@{threads} > {output.mapfile}	
+		samtools index {output.mapfile} -@{threads}
+		"""
+
+rule MEC:
+	input:
+		f = "reads/short_trimmed/{prefix}.illumina.R1.fq",
+		r = "reads/short_trimmed/{prefix}.illumina.R2.fq",
+		asm = "init_polish/{prefix}.pilon_longshort.fasta",
+		mapfile = "misassembly/{prefix}_to_assembly.bam",
+		mapindex = "misassembly/{prefix}_to_assembly.bam.bai"
+	output: 
+		asm = "misassembly/{prefix}.MEC.fasta"
+	params: 
+		mapqual = "-q 32",
+		insertsize = "-m 300",
+		insertvariance = "-s 100"
+	message: "Finding and removing misassemblies using MEC"
+	shell:
+		"""
+		python2 software/MEC/src/mec.py -i {input.asm} -bam {input.mapfile} -o {output.asm} {params}
+		"""
+
+rule racon_preprocess_illumina:
+	input:
+		reads_f = "reads/short_trimmed/{prefix}.illumina.70x.R1.fq",
+		reads_r = "reads/short_trimmed/{prefix}.illumina.70x.R2.fq",
+	output: temp("reads/short_trimmed/{prefix}.illumina.70x.racon.fq")
+	message: "Preprocessing short reads to work for racon polishing"
+	shell: "software/racon/racon_preprocess.py {input} > {output}"
+
+rule map_short_racon_polish:
+	input:
+		reads = "reads/short_trimmed/{prefix}.illumina.70x.racon.fq",
+		assembly = "init_polish/{prefix}.racon_long.fasta"
+	output:
+		mapfile = temp("init_polish/{prefix}.short_to_longpolished.sam")
+	message: "Mapping 70x subsampled short reads to long-read polished consensus"
+	threads: 30
+	shell:
+		"""
+		minimap2 -t {threads} -ax sr --sam-hit-only {input.assembly} {input.reads} | samtools view -h -F4 -q15 -@ {threads} > {output}
+		"""
+####
+
+rule racon_short_polish:
+	input:
+		reads = "reads/short_trimmed/{prefix}.illumina.70x.racon.fq",
+		mapfile = "init_polish/{prefix}.short_to_longpolished.sam",
+		assembly = "init_polish/{prefix}.racon_long.fasta"
+	output:
+		asm = "init_polish/{prefix}.racon_longshort.fasta"
+	message: "Polishing consensus with racon using subsampled short reads"
+	threads: 30
+	shell:
+		"""
+		racon -t {threads} {input.reads} {input.mapfile} {input.assembly} > {output}
+		"""
+
+rule short_mapfile:
+	input: "init_polish/{prefix}.short_to_longpolished.sam"
+	output:
+		mapfile = "init_polish/{prefix}.short_to_longpolished.bam",
+		indexed = "init_polish/{prefix}.short_to_longpolished.bam.bai"
+	message: "compressing alignment file to sorted/indexed BAM"
+	threads: 30
+	shell:
+		"""
+		samtools view -hb -@{threads} {input} | samtools sort -m 16G -l0  -@{threads} > {output.mapfile}	
+		samtools index {output.mapfile} -@{threads}
+		"""
+
 
 rule map_for_purge:
 	input:
